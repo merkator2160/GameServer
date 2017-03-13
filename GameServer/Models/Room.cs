@@ -1,24 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net.Sockets;
 
 namespace GameServer.Models
 {
     public class Room
     {
-        public Room()
-        {
-            Id = Guid.NewGuid();
-            Clients = new List<NetworkStream>();
-        }
         public Room(Guid id)
         {
-            Clients = new List<NetworkStream>();
+            Id = id;
+            Participiants = new List<RoomParticipiant>();
         }
 
 
         // PROPERTIES /////////////////////////////////////////////////////////////////////////////
         public Guid Id { get; set; }
-        public List<NetworkStream> Clients { get; set; }
+        public DateTime LastMessageDate { get; set; }
+        public List<RoomParticipiant> Participiants { get; set; }
     }
 }

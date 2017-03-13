@@ -1,13 +1,11 @@
-﻿using Common.Extensions;
-using GameServer.Models;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace GameServer
 {
@@ -17,17 +15,27 @@ namespace GameServer
         private const Int32 PORT = 8888;
 
         private static TcpListener _tcpListener;
-        private static List<Room> _rooms;
-
+        private static RoomManager _roomManager;
+        private static CancellationTokenSource _cancelTokenSource;
 
         static void Main(String[] args)
         {
             CheckAnyOtherInstances();
-            WitingClients();
 
-            Console.ReadKey();
+            _roomManager = new RoomManager();
+            _tcpListener = new TcpListener(IPAddress.Parse(HOST), PORT);
+            _tcpListener.Start();
 
-            _tcpListener?.Stop();
+            using (_cancelTokenSource = new CancellationTokenSource())
+            {
+                var token = _cancelTokenSource.Token;
+                WitingForClients(token);
+
+                Console.ReadKey();
+                _cancelTokenSource.Cancel();
+            }
+
+            _tcpListener.Stop();
         }
 
 
@@ -40,50 +48,45 @@ namespace GameServer
 
             if (!created)
             {
-                Console.WriteLine("Instance already exist");
+                Console.WriteLine("Application instance already exist");
+                Thread.Sleep(3000);
                 Environment.Exit(0);
             }
         }
-        private static void WitingClients()
+        private static void WitingForClients(CancellationToken token)
         {
-            _tcpListener = new TcpListener(IPAddress.Parse(HOST), PORT);
-            _tcpListener.Start();
-
-            while (true)
+            Task.Factory.StartNew(() =>
             {
-                using (var tcpClient = _tcpListener.AcceptTcpClient())
+                while (true)
                 {
-                    try
-                    {
-                        var stream = tcpClient.GetStream();
-                        while (true)
-                        {
-                            if (!stream.CanRead)
-                            {
-                                Thread.Sleep(10);
-                                continue;
-                            }
+                    if (token.IsCancellationRequested)
+                        break;
 
-                            var clientMessage = stream.ReadString();
-                            stream.WriteString($"Echo: {clientMessage}");
+                    if (!_tcpListener.Pending())
+                    {
+                        Thread.Sleep(10);
+                        return;
+                    }
+
+                    using (var tcpClient = _tcpListener.AcceptTcpClient())
+                    {
+                        try
+                        {
+                            _roomManager.AcceptClient(tcpClient.GetStream());
+                        }
+                        catch (IOException)
+                        {
+
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.Clear();
+                            Console.WriteLine("Something is broken:");
+                            Console.WriteLine(ex.Message);
                         }
                     }
-                    catch (IOException)
-                    {
-
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.Clear();
-                        Console.WriteLine("Something is broken:");
-                        Console.WriteLine(ex.Message);
-                    }
                 }
-            }
-        }
-        private static void AcceptNewClient(NetworkStream stream)
-        {
-
+            }, token);
         }
     }
 }
