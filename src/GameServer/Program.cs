@@ -11,8 +11,8 @@ namespace GameServer
 {
     class Program
     {
-        private const String HOST = "127.0.0.1";
-        private const Int32 PORT = 8888;
+        private const String Host = "127.0.0.1";
+        private const Int32 Port = 8888;
 
         private static TcpListener _tcpListener;
         private static RoomManager _roomManager;
@@ -23,10 +23,10 @@ namespace GameServer
             CheckAnyOtherInstances();
 
             _roomManager = new RoomManager();
-            _tcpListener = new TcpListener(IPAddress.Parse(HOST), PORT);
+            _tcpListener = new TcpListener(IPAddress.Parse(Host), Port);
             _tcpListener.Start();
 
-            using (_cancelTokenSource = new CancellationTokenSource())
+            using(_cancelTokenSource = new CancellationTokenSource())
             {
                 var token = _cancelTokenSource.Token;
                 WitingForClients(token);
@@ -46,7 +46,7 @@ namespace GameServer
             var guid = Marshal.GetTypeLibGuidForAssembly(Assembly.GetExecutingAssembly()).ToString();
             var mutexObj = new Mutex(true, guid, out created);
 
-            if (!created)
+            if(!created)
             {
                 Console.WriteLine("Application instance already exist");
                 Thread.Sleep(3000);
@@ -57,28 +57,28 @@ namespace GameServer
         {
             Task.Factory.StartNew(() =>
             {
-                while (true)
+                while(true)
                 {
-                    if (token.IsCancellationRequested)
+                    if(token.IsCancellationRequested)
                         break;
 
-                    if (!_tcpListener.Pending())
+                    if(!_tcpListener.Pending())
                     {
                         Thread.Sleep(10);
                         return;
                     }
 
-                    using (var tcpClient = _tcpListener.AcceptTcpClient())
+                    using(var tcpClient = _tcpListener.AcceptTcpClient())
                     {
                         try
                         {
                             _roomManager.AcceptClient(tcpClient.GetStream());
                         }
-                        catch (IOException)
+                        catch(IOException)
                         {
 
                         }
-                        catch (Exception ex)
+                        catch(Exception ex)
                         {
                             Console.Clear();
                             Console.WriteLine("Something is broken:");

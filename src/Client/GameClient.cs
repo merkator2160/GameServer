@@ -9,11 +9,11 @@ namespace ClientManager
 {
     public class GameClient
     {
-        private const String DEFAULT_HOST = "127.0.0.1";
-        private const Int32 DEFAULT_PORT = 8888;
-        private const Int32 REPEAT_REQUEST_TIME = 100;
-        private const Int32 RECONNECT_TO_SERVER_TIMEOUT = 3000;
-        private const Int32 SEND_RECEIVE_OPERATIONS_TIMEOUT = 3000;
+        private const String DefaultHost = "127.0.0.1";
+        private const Int32 DefaultPort = 8888;
+        private const Int32 RepeatRequestTime = 100;
+        private const Int32 ReconnectToServerTimeout = 3000;
+        private const Int32 SendReceiveOperationsTimeout = 3000;
 
         private TcpClient _client;
         private CancellationTokenSource _cancelTokenSource;
@@ -24,8 +24,8 @@ namespace ClientManager
 
         public GameClient(Guid clientId, Guid roomId)
         {
-            _host = DEFAULT_HOST;
-            _port = DEFAULT_PORT;
+            _host = DefaultHost;
+            _port = DefaultPort;
             Id = clientId;
             RoomId = roomId;
         }
@@ -46,34 +46,34 @@ namespace ClientManager
         // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
         public void Run()
         {
-            using (_cancelTokenSource = new CancellationTokenSource())
+            using(_cancelTokenSource = new CancellationTokenSource())
             {
                 var token = _cancelTokenSource.Token;
                 Task.Factory.StartNew(() =>
                 {
-                    while (true)
+                    while(true)
                     {
                         try
                         {
                             var stream = Reconnect();
                             SendConnectionRequest(stream);
-                            while (true)
+                            while(true)
                             {
-                                if (token.IsCancellationRequested)
+                                if(token.IsCancellationRequested)
                                     return;
 
                                 SendMessage(stream);
                                 ReceiveEcho(stream);
 
-                                Thread.Sleep(REPEAT_REQUEST_TIME);
+                                Thread.Sleep(RepeatRequestTime);
                             }
                         }
-                        catch (SocketException)
+                        catch(SocketException)
                         {
                             Console.WriteLine($"Client id: {Id} - Server unavalible. Retry to connect.");
-                            Thread.Sleep(RECONNECT_TO_SERVER_TIMEOUT);
+                            Thread.Sleep(ReconnectToServerTimeout);
                         }
-                        catch (Exception ex)
+                        catch(Exception ex)
                         {
                             Console.Clear();
                             Console.WriteLine($"Client id: {Id} - Something is broken:");
@@ -95,8 +95,8 @@ namespace ClientManager
         {
             _client = new TcpClient(_host, _port)
             {
-                SendTimeout = SEND_RECEIVE_OPERATIONS_TIMEOUT,
-                ReceiveTimeout = SEND_RECEIVE_OPERATIONS_TIMEOUT
+                SendTimeout = SendReceiveOperationsTimeout,
+                ReceiveTimeout = SendReceiveOperationsTimeout
             };
             return _client.GetStream();
         }
