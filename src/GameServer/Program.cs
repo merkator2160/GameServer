@@ -11,14 +11,14 @@ namespace GameServer
 {
     class Program
     {
-        private const String Host = "127.0.0.1";
-        private const Int32 Port = 8888;
+        private const string Host = "127.0.0.1";
+        private const int Port = 8888;
 
         private static TcpListener _tcpListener;
         private static RoomManager _roomManager;
         private static CancellationTokenSource _cancelTokenSource;
 
-        static void Main(String[] args)
+        static void Main(string[] args)
         {
             CheckAnyOtherInstances();
 
@@ -29,7 +29,7 @@ namespace GameServer
             using(_cancelTokenSource = new CancellationTokenSource())
             {
                 var token = _cancelTokenSource.Token;
-                WitingForClients(token);
+                WaitForClient(token);
 
                 Console.ReadKey();
                 _cancelTokenSource.Cancel();
@@ -42,10 +42,10 @@ namespace GameServer
         // FUNCTIONS //////////////////////////////////////////////////////////////////////////////////
         private static void CheckAnyOtherInstances()
         {
-            bool created;
             var guid = Marshal.GetTypeLibGuidForAssembly(Assembly.GetExecutingAssembly()).ToString();
-            var mutexObj = new Mutex(true, guid, out created);
 
+            bool created;
+            var mutexObj = new Mutex(true, guid, out created);
             if(!created)
             {
                 Console.WriteLine("Application instance already exist");
@@ -53,7 +53,7 @@ namespace GameServer
                 Environment.Exit(0);
             }
         }
-        private static void WitingForClients(CancellationToken token)
+        private static void WaitForClient(CancellationToken token)
         {
             Task.Factory.StartNew(() =>
             {
@@ -64,14 +64,15 @@ namespace GameServer
 
                     if(!_tcpListener.Pending())
                     {
-                        Thread.Sleep(10);
-                        return;
+                        Thread.Sleep(500);
+                        continue;
                     }
 
                     using(var tcpClient = _tcpListener.AcceptTcpClient())
                     {
                         try
                         {
+                            Console.WriteLine();
                             _roomManager.AcceptClient(tcpClient.GetStream());
                         }
                         catch(IOException)
@@ -81,8 +82,7 @@ namespace GameServer
                         catch(Exception ex)
                         {
                             Console.Clear();
-                            Console.WriteLine("Something is broken:");
-                            Console.WriteLine(ex.Message);
+                            Console.WriteLine($"Something is broken: {ex.Message}");
                         }
                     }
                 }

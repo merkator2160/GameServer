@@ -4,10 +4,10 @@ namespace ClientManager
 {
     class Program
     {
-        static void Main(String[] args)
+        static void Main(string[] args)
         {
-            var client = new GameClient(Guid.NewGuid(), Guid.NewGuid());
-            client.Run();
+            var client = new GameClient();
+            client.Start();
             Console.WriteLine($"Client is runing: {client.Id}");
         }
     }

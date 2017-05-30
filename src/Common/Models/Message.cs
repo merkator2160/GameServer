@@ -8,6 +8,6 @@ namespace Common.Models
     public class Message
     {
         [ProtoMember(1)]
-        public String Body { get; set; }
+        public string Body { get; set; }
     }
 }

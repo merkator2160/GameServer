@@ -1,4 +1,5 @@
-﻿using Common.Extensions;
+﻿using ClientManager.Models;
+using Common.Extensions;
 using Common.Models;
 using System;
 using System.Net.Sockets;
@@ -7,44 +8,35 @@ using System.Threading.Tasks;
 
 namespace ClientManager
 {
-    public class GameClient
+    public class GameClient : IGameClient, IDisposable
     {
-        private const String DefaultHost = "127.0.0.1";
-        private const Int32 DefaultPort = 8888;
-        private const Int32 RepeatRequestTime = 100;
-        private const Int32 ReconnectToServerTimeout = 3000;
-        private const Int32 SendReceiveOperationsTimeout = 3000;
-
         private TcpClient _client;
         private CancellationTokenSource _cancelTokenSource;
+        private readonly ClientConfig _config;
+        private bool _disposed;
 
-        private readonly String _host;
-        private readonly Int32 _port;
 
-
-        public GameClient(Guid clientId, Guid roomId)
+        public GameClient() : this(new ClientConfig())
         {
-            _host = DefaultHost;
-            _port = DefaultPort;
-            Id = clientId;
-            RoomId = roomId;
+
         }
-        public GameClient(String host, Int32 port, Guid clientId, Guid roomId)
+        public GameClient(ClientConfig config)
         {
-            _host = host;
-            _port = port;
-            Id = clientId;
-            RoomId = roomId;
+            _config = config;
+        }
+        ~GameClient()
+        {
+            Dispose(false);
         }
 
 
         // PROPERTIES /////////////////////////////////////////////////////////////////////////////
-        public Guid Id { get; }
-        public Guid RoomId { get; }
+        public Guid Id => _config.ClientId;
+        public Guid RoomId => _config.RoomId;
 
 
-        // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
-        public void Run()
+        // IGameClient ////////////////////////////////////////////////////////////////////////////
+        public void Start()
         {
             using(_cancelTokenSource = new CancellationTokenSource())
             {
@@ -65,13 +57,13 @@ namespace ClientManager
                                 SendMessage(stream);
                                 ReceiveEcho(stream);
 
-                                Thread.Sleep(RepeatRequestTime);
+                                Thread.Sleep(ClientConfig.RepeatRequestTime);
                             }
                         }
                         catch(SocketException)
                         {
                             Console.WriteLine($"Client id: {Id} - Server unavalible. Retry to connect.");
-                            Thread.Sleep(ReconnectToServerTimeout);
+                            Thread.Sleep(ClientConfig.ReconnectToServerTimeout);
                         }
                         catch(Exception ex)
                         {
@@ -91,12 +83,15 @@ namespace ClientManager
         {
             _cancelTokenSource?.Cancel();
         }
+
+
+        // SUPPORT FUNCTIONS //////////////////////////////////////////////////////////////////////
         private NetworkStream Reconnect()
         {
-            _client = new TcpClient(_host, _port)
+            _client = new TcpClient(_config.Host, _config.Port)
             {
-                SendTimeout = SendReceiveOperationsTimeout,
-                ReceiveTimeout = SendReceiveOperationsTimeout
+                SendTimeout = ClientConfig.SendReceiveOperationsTimeout,
+                ReceiveTimeout = ClientConfig.SendReceiveOperationsTimeout
             };
             return _client.GetStream();
         }
@@ -118,6 +113,34 @@ namespace ClientManager
         private void ReceiveEcho(NetworkStream stream)
         {
             Console.WriteLine($"Client id: {Id}, Room id: {RoomId}, Responce: {stream.ReadString()}");
+        }
+
+
+        // IDisposable ////////////////////////////////////////////////////////////////////////////
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if(!_disposed)
+            {
+                ReleaseUnmanagedResources();
+                if(disposing)
+                    ReleaseManagedResources();
+
+                _disposed = true;
+            }
+        }
+        private void ReleaseUnmanagedResources()
+        {
+
+        }
+        private void ReleaseManagedResources()
+        {
+            _client?.Close();
+            _cancelTokenSource?.Dispose();
         }
     }
 }
