@@ -5,6 +5,8 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Items", "Items", "{59742426-E17B-49D0-97B5-2F78AA5DBC79}"
 	ProjectSection(SolutionItems) = preProject
+		.gitattributes = .gitattributes
+		.gitignore = .gitignore
 		clean-with-scc.bat = clean-with-scc.bat
 		TT.txt = TT.txt
 	EndProjectSection

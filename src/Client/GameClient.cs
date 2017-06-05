@@ -11,7 +11,8 @@ namespace ClientManager
     public class GameClient : IGameClient, IDisposable
     {
         private TcpClient _client;
-        private CancellationTokenSource _cancelTokenSource;
+        private CancellationTokenSource _messageSenderCancelTokenSource;
+        private CancellationTokenSource _messageReaderCancelTokenSource;
         private readonly ClientConfig _config;
         private bool _disposed;
 
@@ -38,62 +39,88 @@ namespace ClientManager
         // IGameClient ////////////////////////////////////////////////////////////////////////////
         public void Start()
         {
-            using(_cancelTokenSource = new CancellationTokenSource())
+            while(true)
             {
-                var token = _cancelTokenSource.Token;
-                Task.Factory.StartNew(() =>
+                try
                 {
-                    while(true)
+                    if(_client == null || !_client.Connected)
                     {
-                        try
-                        {
-                            var stream = Reconnect();
-                            SendConnectionRequest(stream);
-                            while(true)
-                            {
-                                if(token.IsCancellationRequested)
-                                    return;
+                        var stream = Reconnect();
+                        SendConnectionRequest(stream);
 
-                                SendMessage(stream);
-                                ReceiveEcho(stream);
+                        _messageSenderCancelTokenSource = new CancellationTokenSource();
+                        RunMessageSender(stream, _messageSenderCancelTokenSource.Token);
 
-                                Thread.Sleep(ClientConfig.RepeatRequestTime);
-                            }
-                        }
-                        catch(SocketException)
-                        {
-                            Console.WriteLine($"Client id: {Id} - Server unavalible. Retry to connect.");
-                            Thread.Sleep(ClientConfig.ReconnectToServerTimeout);
-                        }
-                        catch(Exception ex)
-                        {
-                            Console.Clear();
-                            Console.WriteLine($"Client id: {Id} - Something is broken:");
-                            Console.WriteLine(ex.Message);
-                        }
-                        finally
-                        {
-                            _client.Close();
-                        }
+                        _messageReaderCancelTokenSource = new CancellationTokenSource();
+                        RunMessageReader(stream, _messageReaderCancelTokenSource.Token);
                     }
-                }, token);
+                    else
+                    {
+                        Thread.Sleep(1000);
+                    }
+                }
+                catch(SocketException)
+                {
+                    Console.WriteLine($"Client id: {Id} - Server unavalible. Retry to connect.");
+                    Thread.Sleep(ClientConfig.ReconnectToServerTimeout);
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine($"Client id: {Id} - Something is broken:");
+                    Console.WriteLine(ex.Message);
+#if DEBUG
+                    throw;
+#endif
+                }
             }
         }
         public void Stop()
         {
-            _cancelTokenSource?.Cancel();
+            StopAndDisposeAll();
         }
 
 
         // SUPPORT FUNCTIONS //////////////////////////////////////////////////////////////////////
         private NetworkStream Reconnect()
         {
+            Console.WriteLine("Reconnect");
             _client = new TcpClient(_config.Host, _config.Port)
             {
                 SendTimeout = ClientConfig.SendReceiveOperationsTimeout,
                 ReceiveTimeout = ClientConfig.SendReceiveOperationsTimeout
             };
             return _client.GetStream();
+        }
+        private void RunMessageReader(NetworkStream stream, CancellationToken token)
+        {
+            Task.Factory.StartNew(() =>
+            {
+                while(true)
+                {
+                    if(token.IsCancellationRequested)
+                        return;
+
+                    if(stream.DataAvailable)
+                        ReadMessage(stream);
+
+                    Thread.Sleep(ClientConfig.ReceiveMessageDelay);
+                }
+            }, token);
+        }
+        private void RunMessageSender(NetworkStream stream, CancellationToken token)
+        {
+            Task.Factory.StartNew(() =>
+            {
+                while(true)
+                {
+                    if(token.IsCancellationRequested)
+                        return;
+
+                    SendMessage(stream);
+
+                    Thread.Sleep(ClientConfig.SendMessageDelay);
+                }
+            }, token);
         }
         private void SendConnectionRequest(NetworkStream stream)
         {
@@ -110,9 +137,20 @@ namespace ClientManager
                 Body = "Hi!"
             });
         }
-        private void ReceiveEcho(NetworkStream stream)
+        private void ReadMessage(NetworkStream stream)
         {
-            Console.WriteLine($"Client id: {Id}, Room id: {RoomId}, Responce: {stream.ReadString()}");
+            var echo = stream.ReadString();
+            Console.WriteLine($"Client id: {Id}, Room id: {RoomId}, Responce: {echo}");
+        }
+        private void StopAndDisposeAll()
+        {
+            _messageSenderCancelTokenSource?.Cancel();
+            _messageSenderCancelTokenSource?.Dispose();
+
+            _messageReaderCancelTokenSource?.Cancel();
+            _messageReaderCancelTokenSource?.Dispose();
+
+            _client?.Close();
         }
 
 
@@ -135,12 +173,11 @@ namespace ClientManager
         }
         private void ReleaseUnmanagedResources()
         {
-
+            // We didn't have its yet.
         }
         private void ReleaseManagedResources()
         {
-            _client?.Close();
-            _cancelTokenSource?.Dispose();
+            StopAndDisposeAll();
         }
     }
 }

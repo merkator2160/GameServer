@@ -9,6 +9,7 @@ namespace ClientManager
             var client = new GameClient();
             client.Start();
             Console.WriteLine($"Client is runing: {client.Id}");
+            Console.ReadKey();
         }
     }
 }

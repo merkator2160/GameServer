@@ -2,14 +2,16 @@
 using Common.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace GameServer.Models
 {
-    public class Room
+    public class Room : IDisposable
     {
-        private CancellationTokenSource _cancelTokenSource;
+        private CancellationTokenSource _chattingCancelationTokenSource;
+        private bool _disposed;
 
 
         public Room(Guid id)
@@ -28,25 +30,69 @@ namespace GameServer.Models
         // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
         private void BeginChatting()
         {
-            using(_cancelTokenSource = new CancellationTokenSource())
+            using(_chattingCancelationTokenSource = new CancellationTokenSource())
             {
-                var token = _cancelTokenSource.Token;
+                var token = _chattingCancelationTokenSource.Token;
                 Task.Factory.StartNew(() =>
                 {
                     while(true)
                     {
-                        foreach(var x in Participiants)
+                        try
                         {
-                            var receivedMessage = x.Stream.Read<Message>();
-                            SendMessageToOtherParticipiants(receivedMessage.Body);
+                            if(token.IsCancellationRequested)
+                                return;
+
+                            foreach(var x in Participiants)
+                            {
+                                if(x.Stream.DataAvailable)
+                                {
+                                    var receivedMessage = x.Stream.Read<Message>();
+                                    SendMessageToOtherParticipiants(receivedMessage.Body, x);
+                                }
+                            }
+                        }
+                        catch(Exception ex)
+                        {
+                            Console.WriteLine(ex);
+#if DEBUG
+                            throw;
+#endif
                         }
                     }
                 }, token);
             }
         }
-        private void SendMessageToOtherParticipiants(string message)
+        private void SendMessageToOtherParticipiants(string message, RoomMember current)
+        {
+            var roommates = Participiants.Except(new[] { current });
+        }
+
+
+        // IDisposable ////////////////////////////////////////////////////////////////////////////
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if(!_disposed)
+            {
+                ReleaseUnmanagedResources();
+                if(disposing)
+                    ReleaseManagedResources();
+
+                _disposed = true;
+            }
+        }
+        private void ReleaseUnmanagedResources()
         {
 
+        }
+        private void ReleaseManagedResources()
+        {
+            _chattingCancelationTokenSource?.Cancel();
+            _chattingCancelationTokenSource?.Dispose();
         }
     }
 }

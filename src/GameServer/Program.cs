@@ -30,6 +30,7 @@ namespace GameServer
             {
                 var token = _cancelTokenSource.Token;
                 WaitForClient(token);
+                Console.WriteLine("Server ready...");
 
                 Console.ReadKey();
                 _cancelTokenSource.Cancel();
@@ -72,7 +73,7 @@ namespace GameServer
                     {
                         try
                         {
-                            Console.WriteLine();
+                            Console.WriteLine("New client accepted.");
                             _roomManager.AcceptClient(tcpClient.GetStream());
                         }
                         catch(IOException)
@@ -81,8 +82,10 @@ namespace GameServer
                         }
                         catch(Exception ex)
                         {
-                            Console.Clear();
                             Console.WriteLine($"Something is broken: {ex.Message}");
+#if DEBUG
+                            throw;
+#endif
                         }
                     }
                 }
