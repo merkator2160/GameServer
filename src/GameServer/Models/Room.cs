@@ -12,22 +12,28 @@ namespace GameServer.Models
     {
         private CancellationTokenSource _chattingCancelationTokenSource;
         private bool _disposed;
+        private readonly List<RoomMember> _participiants;
 
 
         public Room(Guid id)
         {
             Id = id;
-            Participiants = new List<RoomMember>();
+            _participiants = new List<RoomMember>();
+            BeginChatting();
         }
 
 
         // PROPERTIES /////////////////////////////////////////////////////////////////////////////
         public Guid Id { get; set; }
         public DateTime LastMessageDate { get; set; }
-        public List<RoomMember> Participiants { get; set; }
 
 
         // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
+        public void AddParticipiant(RoomMember newMember)
+        {
+            lock(_participiants)
+                _participiants.Add(newMember);
+        }
         private void BeginChatting()
         {
             using(_chattingCancelationTokenSource = new CancellationTokenSource())
@@ -42,14 +48,19 @@ namespace GameServer.Models
                             if(token.IsCancellationRequested)
                                 return;
 
-                            foreach(var x in Participiants)
+                            lock(_participiants)
                             {
-                                if(x.Stream.DataAvailable)
+                                foreach(var x in _participiants)
                                 {
-                                    var receivedMessage = x.Stream.Read<Message>();
-                                    SendMessageToOtherParticipiants(receivedMessage.Body, x);
+                                    if(x.Stream.DataAvailable)
+                                    {
+                                        var receivedMessage = x.Stream.ReadObject<Message>();
+                                        SendMessageToNeighbors(receivedMessage.Body, x);
+                                    }
                                 }
                             }
+
+                            Thread.Sleep(10);
                         }
                         catch(Exception ex)
                         {
@@ -62,9 +73,9 @@ namespace GameServer.Models
                 }, token);
             }
         }
-        private void SendMessageToOtherParticipiants(string message, RoomMember current)
+        private void SendMessageToNeighbors(string message, RoomMember current)
         {
-            var roommates = Participiants.Except(new[] { current });
+            var roommates = _participiants.Except(new[] { current });
         }
 
 

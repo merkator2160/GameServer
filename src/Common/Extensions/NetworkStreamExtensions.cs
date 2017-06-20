@@ -1,5 +1,5 @@
-﻿using ProtoBuf;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 
 namespace Common.Extensions
@@ -13,7 +13,7 @@ namespace Common.Extensions
 
             do
             {
-                int bytes = stream.Read(buffer, 0, buffer.Length);
+                var bytes = stream.Read(buffer, 0, buffer.Length);
                 stringBuilder.Append(Encoding.UTF8.GetString(buffer, 0, bytes));
             }
             while(stream.DataAvailable);
@@ -25,13 +25,15 @@ namespace Common.Extensions
             var dataOut = Encoding.UTF8.GetBytes(message);
             stream.Write(dataOut, 0, dataOut.Length);
         }
-        public static T Read<T>(this NetworkStream stream)
+        public static T ReadObject<T>(this NetworkStream stream)
         {
-            return Serializer.Deserialize<T>(stream);
+            return (T)new BinaryFormatter().Deserialize(stream);
+            //return Serializer.Deserialize<T>(stream);
         }
-        public static void Write<T>(this NetworkStream stream, T instance)
+        public static void WriteObject<T>(this NetworkStream stream, T instance)
         {
-            Serializer.Serialize(stream, instance);
+            new BinaryFormatter().Serialize(stream, instance);
+            //Serializer.Serialize(stream, instance);
         }
     }
 }

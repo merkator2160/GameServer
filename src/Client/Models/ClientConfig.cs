@@ -8,7 +8,6 @@ namespace ClientManager.Models
         private const int DefaultPort = 8888;
         public const int SendMessageDelay = 100;
         public const int ReceiveMessageDelay = 100;
-        public const int ReconnectToServerTimeout = 3000;
         public const int SendReceiveOperationsTimeout = 3000;
 
 

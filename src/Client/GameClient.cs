@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ClientManager
 {
-    public class GameClient : IGameClient, IDisposable
+    public class GameClient : IDisposable
     {
         private TcpClient _client;
         private CancellationTokenSource _messageSenderCancelTokenSource;
@@ -36,33 +36,33 @@ namespace ClientManager
         public Guid RoomId => _config.RoomId;
 
 
-        // IGameClient ////////////////////////////////////////////////////////////////////////////
+        // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
         public void Start()
         {
             while(true)
             {
                 try
                 {
-                    if(_client == null || !_client.Connected)
-                    {
-                        var stream = Reconnect();
-                        SendConnectionRequest(stream);
-
-                        _messageSenderCancelTokenSource = new CancellationTokenSource();
-                        RunMessageSender(stream, _messageSenderCancelTokenSource.Token);
-
-                        _messageReaderCancelTokenSource = new CancellationTokenSource();
-                        RunMessageReader(stream, _messageReaderCancelTokenSource.Token);
-                    }
-                    else
+                    if(_client != null && _client.Connected)
                     {
                         Thread.Sleep(1000);
+                        continue;
                     }
+
+                    StopAndDisposeAll();
+
+                    var stream = Connect();
+                    SendConnectionRequest(stream);
+
+                    _messageSenderCancelTokenSource = new CancellationTokenSource();
+                    RunMessageSender(stream, _messageSenderCancelTokenSource.Token);
+
+                    _messageReaderCancelTokenSource = new CancellationTokenSource();
+                    RunMessageReader(stream, _messageReaderCancelTokenSource.Token);
                 }
                 catch(SocketException)
                 {
-                    Console.WriteLine($"Client id: {Id} - Server unavalible. Retry to connect.");
-                    Thread.Sleep(ClientConfig.ReconnectToServerTimeout);
+                    Console.WriteLine($"Client id: {Id} - Server unavalible. Retrying to connect.");
                 }
                 catch(Exception ex)
                 {
@@ -78,17 +78,14 @@ namespace ClientManager
         {
             StopAndDisposeAll();
         }
-
-
-        // SUPPORT FUNCTIONS //////////////////////////////////////////////////////////////////////
-        private NetworkStream Reconnect()
+        private NetworkStream Connect()
         {
-            Console.WriteLine("Reconnect");
             _client = new TcpClient(_config.Host, _config.Port)
             {
                 SendTimeout = ClientConfig.SendReceiveOperationsTimeout,
                 ReceiveTimeout = ClientConfig.SendReceiveOperationsTimeout
             };
+            Console.WriteLine("Connected");
             return _client.GetStream();
         }
         private void RunMessageReader(NetworkStream stream, CancellationToken token)
@@ -97,13 +94,20 @@ namespace ClientManager
             {
                 while(true)
                 {
-                    if(token.IsCancellationRequested)
-                        return;
+                    try
+                    {
+                        if(token.IsCancellationRequested)
+                            return;
 
-                    if(stream.DataAvailable)
-                        ReadMessage(stream);
+                        if(stream.DataAvailable)
+                            ReadMessage(stream);
 
-                    Thread.Sleep(ClientConfig.ReceiveMessageDelay);
+                        Thread.Sleep(ClientConfig.ReceiveMessageDelay);
+                    }
+                    catch(Exception ex)
+                    {
+                        Console.WriteLine(ex);
+                    }
                 }
             }, token);
         }
@@ -113,18 +117,25 @@ namespace ClientManager
             {
                 while(true)
                 {
-                    if(token.IsCancellationRequested)
-                        return;
+                    try
+                    {
+                        if(token.IsCancellationRequested)
+                            return;
 
-                    SendMessage(stream);
+                        SendMessage(stream);
 
-                    Thread.Sleep(ClientConfig.SendMessageDelay);
+                        Thread.Sleep(ClientConfig.SendMessageDelay);
+                    }
+                    catch(Exception e)
+                    {
+                        Console.WriteLine(e);
+                    }
                 }
             }, token);
         }
         private void SendConnectionRequest(NetworkStream stream)
         {
-            stream.Write(new ConnectionRequest()
+            stream.WriteObject(new ConnectionRequest()
             {
                 RoomId = Guid.NewGuid(),
                 ClientId = Guid.NewGuid()
@@ -132,7 +143,7 @@ namespace ClientManager
         }
         private void SendMessage(NetworkStream stream)
         {
-            stream.Write(new Message()
+            stream.WriteObject(new Message()
             {
                 Body = "Hi!"
             });

@@ -8,9 +8,9 @@ namespace Common.Models
     public class ConnectionRequest
     {
         [ProtoMember(1)]
-        public Guid ClientId { get; set; }
+        public SerializableGuid ClientId { get; set; }
 
         [ProtoMember(2)]
-        public Guid RoomId { get; set; }
+        public SerializableGuid RoomId { get; set; }
     }
 }

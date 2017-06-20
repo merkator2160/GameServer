@@ -12,7 +12,6 @@ namespace GameServer
         private readonly List<Room> _chatRooms;
 
 
-
         public RoomManager()
         {
             _chatRooms = new List<Room>();
@@ -22,12 +21,12 @@ namespace GameServer
         // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
         public void AcceptClient(NetworkStream stream)
         {
-            var request = stream.Read<ConnectionRequest>();
+            var request = stream.ReadObject<ConnectionRequest>();
             var requestedRoom = _chatRooms.FirstOrDefault(r => r.Id == request.RoomId);
             if(requestedRoom == null)
             {
                 var newRoom = new Room(request.RoomId);
-                newRoom.Participiants.Add(new RoomMember()
+                newRoom.AddParticipiant(new RoomMember()
                 {
                     Id = request.ClientId,
                     Stream = stream
@@ -36,7 +35,7 @@ namespace GameServer
             }
             else
             {
-                requestedRoom.Participiants.Add(new RoomMember()
+                requestedRoom.AddParticipiant(new RoomMember()
                 {
                     Id = request.ClientId,
                     Stream = stream

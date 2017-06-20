@@ -48,7 +48,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GameClient.cs" />
-    <Compile Include="IGameClient.cs" />
     <Compile Include="Models\ClientConfig.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

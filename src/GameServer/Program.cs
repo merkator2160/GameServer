@@ -18,6 +18,7 @@ namespace GameServer
         private static RoomManager _roomManager;
         private static CancellationTokenSource _cancelTokenSource;
 
+
         static void Main(string[] args)
         {
             CheckAnyOtherInstances();
@@ -73,8 +74,8 @@ namespace GameServer
                     {
                         try
                         {
-                            Console.WriteLine("New client accepted.");
                             _roomManager.AcceptClient(tcpClient.GetStream());
+                            Console.WriteLine("New client accepted.");
                         }
                         catch(IOException)
                         {
