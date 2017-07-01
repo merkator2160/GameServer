@@ -123,7 +123,7 @@ namespace ClientManager
         {
             stream.WriteObject(new Message()
             {
-                Body = "Hi!"
+                Body = $"Hi from {_config.ClientId}"
             });
         }
         private void ReceiveMessage(NetworkStream stream)
