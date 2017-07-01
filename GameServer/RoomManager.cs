@@ -39,7 +39,6 @@ namespace GameServer
                 {
                     requestedRoom = new Room(request.RoomId);
                     _chatRooms.Add(requestedRoom);
-                    Console.WriteLine($"Room {request.RoomId} created");
                 }
 
                 requestedRoom.AddParticipiant(new RoomMember()
@@ -47,8 +46,6 @@ namespace GameServer
                     Id = request.ClientId,
                     Client = client
                 });
-
-                Console.WriteLine($"Client {request.ClientId} accepted");
             }
         }
         private void RoomCleanUp()
@@ -61,6 +58,7 @@ namespace GameServer
                     {
                         var obsoleteRooms = CollectObsoleteRooms();
                         DeleteObsoleteRooms(obsoleteRooms);
+                        PrintReport();
                     }
 
                     Thread.Sleep(_config.CleanUpThreadIdle);
@@ -92,6 +90,17 @@ namespace GameServer
                 _chatRooms.Remove(x);
                 x.Dispose();
                 Console.WriteLine($"Room {x.Id} closed due inactivity");
+            }
+        }
+        private void PrintReport()
+        {
+            Console.Clear();
+            Console.WriteLine($"Rooms: {_chatRooms.Count}");
+            Console.WriteLine();
+            foreach (var x in _chatRooms)
+            {
+                var lifeTimeLeft = x.LastActivityDate - (DateTime.UtcNow - _config.EmptyRoomLifeTime);
+                Console.WriteLine($"Room {x.Id}, member count: {x.NumberOfMembers}, life time left: {lifeTimeLeft.Seconds} sec");
             }
         }
 

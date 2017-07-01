@@ -35,7 +35,6 @@ namespace GameServer
             _clientWorkerThread = new Thread(WaitForNewClient);
             _clientWorkerThread.Start();
 
-            Console.WriteLine("Server ready...");
             Console.ReadKey();
 
             _clientWorkerThread.Abort();

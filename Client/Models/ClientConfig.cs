@@ -26,5 +26,6 @@ namespace ClientManager.Models
         public Int32 Port { get; set; }
         public Guid ClientId { get; set; }
         public Guid RoomId { get; set; }
+        public Boolean IsWritingEcho { get; set; }
     }
 }

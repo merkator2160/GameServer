@@ -11,14 +11,14 @@ namespace GameServer.Models
     {
         private readonly Thread _chatThread;
         private Boolean _disposed;
-        private readonly List<RoomMember> _participiants;
+        private readonly List<RoomMember> _members;
 
 
         public Room(Guid id)
         {
             Id = id;
             LastActivityDate = DateTime.UtcNow;
-            _participiants = new List<RoomMember>();
+            _members = new List<RoomMember>();
             _chatThread = new Thread(BeginChatting);
             _chatThread.Start();
         }
@@ -26,15 +26,24 @@ namespace GameServer.Models
 
         // PROPERTIES /////////////////////////////////////////////////////////////////////////////
         public Guid Id { get; set; }
-        public DateTime LastMessageDate { get; set; }
+        public Int32 NumberOfMembers
+        {
+            get
+            {
+                lock (_members)
+                {
+                    return _members.Count();
+                }
+            }
+        }
         public DateTime LastActivityDate { get; set; }
 
 
         // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
         public void AddParticipiant(RoomMember newMember)
         {
-            lock (_participiants)
-                _participiants.Add(newMember);
+            lock (_members)
+                _members.Add(newMember);
         }
         private void BeginChatting()
         {
@@ -42,14 +51,14 @@ namespace GameServer.Models
             {
                 try
                 {
-                    lock (_participiants)
+                    lock (_members)
                     {
-                        foreach (var x in _participiants)
+                        foreach (var x in _members)
                         {
                             if (!x.Client.Connected)
                             {
                                 Console.WriteLine($"Client {x.Id} disconnected");
-                                _participiants.Remove(x);
+                                _members.Remove(x);
                                 continue;
                             }
 
@@ -62,6 +71,8 @@ namespace GameServer.Models
                             }
                         }
                     }
+
+                    Thread.Sleep(10);
                 }
                 catch (ThreadAbortException)
                 {
@@ -78,7 +89,7 @@ namespace GameServer.Models
         }
         private void SendMessageToNeighbors(String message, RoomMember current)
         {
-            var roommates = _participiants.Except(new[] { current });
+            var roommates = _members.Except(new[] { current });
             foreach (var x in roommates)
             {
                 x.Stream.WriteObject(new Message()
@@ -124,9 +135,9 @@ namespace GameServer.Models
         }
         private void DisposeParticipiants()
         {
-            lock (_participiants)
+            lock (_members)
             {
-                foreach (var x in _participiants)
+                foreach (var x in _members)
                 {
                     x.Client.Close();
                 }

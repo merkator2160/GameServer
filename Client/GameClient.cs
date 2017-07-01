@@ -2,6 +2,7 @@
 using Common.Extensions;
 using Common.Models;
 using System;
+using System.IO;
 using System.Net.Sockets;
 using System.Threading;
 
@@ -30,11 +31,6 @@ namespace ClientManager
         }
 
 
-        // PROPERTIES /////////////////////////////////////////////////////////////////////////////
-        public Guid Id => _config.ClientId;
-        public Guid RoomId => _config.RoomId;
-
-
         // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
         public void Start()
         {
@@ -60,11 +56,15 @@ namespace ClientManager
                 }
                 catch (SocketException ex)
                 {
-                    Console.WriteLine($"Client {Id}: Server unavalible. Retrying to connect.");
+                    Console.WriteLine($"Client {_config.ClientId}: Server unavalible. Retrying to connect.");
+                }
+                catch (IOException ex)
+                {
+                    Console.WriteLine($"Client {_config.ClientId}: Server unavalible. Retrying to connect.");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Client {Id}: Something is broken:");
+                    Console.WriteLine($"Client {_config.ClientId}: Something is broken:");
                     Console.WriteLine(ex.Message);
 #if DEBUG
                     throw;
@@ -107,7 +107,7 @@ namespace ClientManager
                 ReceiveTimeout = ClientConfig.ReceiveOperationsTimeout
             };
 
-            Console.WriteLine($"Client {Id}: Connected");
+            Console.WriteLine($"Client {_config.ClientId}: Connected");
 
             return _client.GetStream();
         }
@@ -115,8 +115,8 @@ namespace ClientManager
         {
             stream.WriteObject(new ConnectionRequest()
             {
-                RoomId = Guid.NewGuid(),
-                ClientId = Guid.NewGuid()
+                RoomId = _config.RoomId,
+                ClientId = _config.ClientId
             });
         }
         private void SendMessage(NetworkStream stream)
@@ -129,7 +129,7 @@ namespace ClientManager
         private void ReceiveMessage(NetworkStream stream)
         {
             var message = stream.ReadObject<Message>().Body;
-            Console.WriteLine($"Client id: {Id}, Room id: {RoomId}: {message}");
+            Console.WriteLine($"Client id: {_config.ClientId}, Room id: {_config.RoomId}: {message}");
         }
 
 
