@@ -1,96 +1,88 @@
-﻿using System;
+﻿using GameServer.Models;
+using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace GameServer
 {
     class Program
     {
-        private const string Host = "127.0.0.1";
-        private const int Port = 8888;
+        private const String Host = "127.0.0.1";
+        private const Int32 Port = 8888;
 
         private static TcpListener _tcpListener;
+        private static Thread _clientWorkerThread;
         private static RoomManager _roomManager;
-        private static CancellationTokenSource _cancelTokenSource;
 
 
-        static void Main(string[] args)
+        static void Main(String[] args)
         {
             CheckAnyOtherInstances();
 
-            _roomManager = new RoomManager();
+            _roomManager = new RoomManager(new RoomManagerConfig()
+            {
+                CleanUpThreadIdle = TimeSpan.FromSeconds(1),
+                EmptyRoomLifeTime = TimeSpan.FromMinutes(1)
+            });
+
             _tcpListener = new TcpListener(IPAddress.Parse(Host), Port);
             _tcpListener.Start();
 
-            using(_cancelTokenSource = new CancellationTokenSource())
-            {
-                var token = _cancelTokenSource.Token;
-                WaitForClient(token);
-                Console.WriteLine("Server ready...");
+            _clientWorkerThread = new Thread(WaitForNewClient);
+            _clientWorkerThread.Start();
 
-                Console.ReadKey();
-                _cancelTokenSource.Cancel();
-            }
+            Console.WriteLine("Server ready...");
+            Console.ReadKey();
 
+            _clientWorkerThread.Abort();
             _tcpListener.Stop();
+            _roomManager.Dispose();
         }
 
 
         // FUNCTIONS //////////////////////////////////////////////////////////////////////////////////
+        private static void WaitForNewClient()
+        {
+            while (true)
+            {
+                try
+                {
+                    var tcpClient = _tcpListener.AcceptTcpClient();
+                    _roomManager.AcceptClient(tcpClient);
+                }
+                catch (ThreadAbortException)
+                {
+                    //TODO: Sometimes occur when Thread disposing, maybe investigation required
+                }
+                catch (IOException ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"{nameof(WaitForNewClient)} something is broken: {ex.Message}");
+#if DEBUG
+                    throw;
+#endif
+                }
+            }
+        }
         private static void CheckAnyOtherInstances()
         {
             var guid = Marshal.GetTypeLibGuidForAssembly(Assembly.GetExecutingAssembly()).ToString();
 
-            bool created;
+            Boolean created;
             var mutexObj = new Mutex(true, guid, out created);
-            if(!created)
+            if (!created)
             {
                 Console.WriteLine("Application instance already exist");
                 Thread.Sleep(3000);
                 Environment.Exit(0);
             }
-        }
-        private static void WaitForClient(CancellationToken token)
-        {
-            Task.Factory.StartNew(() =>
-            {
-                while(true)
-                {
-                    if(token.IsCancellationRequested)
-                        break;
-
-                    if(!_tcpListener.Pending())
-                    {
-                        Thread.Sleep(500);
-                        continue;
-                    }
-
-                    using(var tcpClient = _tcpListener.AcceptTcpClient())
-                    {
-                        try
-                        {
-                            _roomManager.AcceptClient(tcpClient.GetStream());
-                            Console.WriteLine("New client accepted.");
-                        }
-                        catch(IOException)
-                        {
-
-                        }
-                        catch(Exception ex)
-                        {
-                            Console.WriteLine($"Something is broken: {ex.Message}");
-#if DEBUG
-                            throw;
-#endif
-                        }
-                    }
-                }
-            }, token);
         }
     }
 }

@@ -4,29 +4,26 @@ namespace ClientManager.Models
 {
     public class ClientConfig
     {
-        private const string DefaultHost = "127.0.0.1";
-        private const int DefaultPort = 8888;
-        public const int SendMessageDelay = 100;
-        public const int ReceiveMessageDelay = 100;
-        public const int SendReceiveOperationsTimeout = 3000;
+        private const String DefaultHost = "127.0.0.1";
+        private const Int32 DefaultPort = 8888;
+        public const Int32 SendMessageDelay = 50;
+        public const Int32 ReconnectDelay = 3000;
+        public const Int32 ReceiveOperationsTimeout = 100;
+        public const Int32 SendOperationsTimeout = 100;
 
 
-        public ClientConfig() : this(DefaultHost, DefaultPort, Guid.NewGuid(), Guid.NewGuid())
+        public ClientConfig()
         {
-
-        }
-        public ClientConfig(string host, int port, Guid clientId, Guid roomId)
-        {
-            Host = host;
-            Port = port;
-            ClientId = clientId;
-            RoomId = roomId;
+            Host = DefaultHost;
+            Port = DefaultPort;
+            ClientId = Guid.NewGuid();
+            RoomId = Guid.NewGuid();
         }
 
 
         // PROPERTIES /////////////////////////////////////////////////////////////////////////////
-        public string Host { get; set; }
-        public int Port { get; set; }
+        public String Host { get; set; }
+        public Int32 Port { get; set; }
         public Guid ClientId { get; set; }
         public Guid RoomId { get; set; }
     }
