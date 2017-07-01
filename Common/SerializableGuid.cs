@@ -1,13 +1,10 @@
-﻿using ProtoBuf;
-using System;
+﻿using System;
 
 namespace Common
 {
     [Serializable]
-    [ProtoContract]
     public struct SerializableGuid : IComparable, IComparable<SerializableGuid>, IEquatable<SerializableGuid>
     {
-        [ProtoMember(1)]
         private readonly String _value;
 
         private SerializableGuid(String value)

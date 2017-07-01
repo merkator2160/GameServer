@@ -29,12 +29,10 @@ namespace Common.Extensions
         public static T ReadObject<T>(this NetworkStream stream)
         {
             return (T)new BinaryFormatter().Deserialize(stream);
-            //return Serializer.Deserialize<T>(stream);
         }
         public static void WriteObject<T>(this NetworkStream stream, T instance)
         {
             new BinaryFormatter().Serialize(stream, instance);
-            //Serializer.Serialize(stream, instance);
         }
     }
 }
