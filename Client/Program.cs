@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace ClientManager
 {
-    class Program
+    static class Program
     {
         static void Main(String[] args)
         {

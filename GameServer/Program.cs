@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace GameServer
 {
-    class Program
+    static class Program
     {
         private const String Host = "127.0.0.1";
         private const Int32 Port = 8888;
