@@ -14,12 +14,22 @@ namespace ClientManager
                 Guid.NewGuid(),
                 Guid.NewGuid()
             };
+
             var clients = new List<GameClient>(30);
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 2; i++)
             {
                 var client = new GameClient(new ClientConfig()
                 {
                     RoomId = roomsIds[0]
+                });
+                client.Start();
+                clients.Add(client);
+            }
+            for (int i = 0; i < 1; i++)
+            {
+                var client = new GameClient(new ClientConfig()
+                {
+                    RoomId = roomsIds[1]
                 });
                 client.Start();
                 clients.Add(client);

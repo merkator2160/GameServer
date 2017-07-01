@@ -47,7 +47,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Models\Room.cs" />
+    <Compile Include="Room.cs" />
     <Compile Include="Models\RoomManagerConfig.cs" />
     <Compile Include="Models\RoomMember.cs" />
     <Compile Include="Program.cs" />

@@ -1,11 +1,12 @@
 ﻿using Common.Extensions;
 using Common.Models;
+using GameServer.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
-namespace GameServer.Models
+namespace GameServer
 {
     public class Room : IDisposable
     {
@@ -67,7 +68,7 @@ namespace GameServer.Models
                                 LastActivityDate = DateTime.UtcNow;
 
                                 var receivedMessage = x.Stream.ReadObject<Message>();
-                                SendEcho(receivedMessage.Body, x);
+                                SendMessageToNeighbors(receivedMessage.Body, x);
                             }
                         }
                     }

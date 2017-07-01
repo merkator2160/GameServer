@@ -6,7 +6,7 @@ namespace ClientManager.Models
     {
         private const String DefaultHost = "127.0.0.1";
         private const Int32 DefaultPort = 8888;
-        public const Int32 SendMessageDelay = 50;
+        public const Int32 SendMessageDelay = 100;
         public const Int32 ReconnectDelay = 3000;
         public const Int32 ReceiveOperationsTimeout = 100;
         public const Int32 SendOperationsTimeout = 100;
