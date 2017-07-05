@@ -32,10 +32,10 @@ namespace GameServer
             var stream = client.GetStream();
             var request = stream.ReadObject<ConnectionRequest>();
 
-            lock (_chatRooms)
+            lock(_chatRooms)
             {
                 var requestedRoom = _chatRooms.FirstOrDefault(r => r.Id == request.RoomId);
-                if (requestedRoom == null)
+                if(requestedRoom == null)
                 {
                     requestedRoom = new Room(request.RoomId);
                     _chatRooms.Add(requestedRoom);
@@ -50,11 +50,11 @@ namespace GameServer
         }
         private void RoomCleanUp()
         {
-            while (true)
+            while(true)
             {
                 try
                 {
-                    lock (_chatRooms)
+                    lock(_chatRooms)
                     {
                         var obsoleteRooms = CollectObsoleteRooms();
                         DeleteObsoleteRooms(obsoleteRooms);
@@ -63,11 +63,11 @@ namespace GameServer
 
                     Thread.Sleep(_config.CleanUpThreadIdle);
                 }
-                catch (ThreadAbortException)
+                catch(ThreadAbortException)
                 {
                     //TODO: Sometimes occur when Thread disposing, maybe investigation required
                 }
-                catch (Exception ex)
+                catch(Exception ex)
                 {
                     Console.WriteLine($"{nameof(RoomCleanUp)} something is broken: {ex.Message}");
 #if DEBUG
@@ -85,11 +85,10 @@ namespace GameServer
         }
         private void DeleteObsoleteRooms(Room[] obsoleteRooms)
         {
-            foreach (var x in obsoleteRooms)
+            foreach(var x in obsoleteRooms)
             {
                 _chatRooms.Remove(x);
                 x.Dispose();
-                Console.WriteLine($"Room {x.Id} closed due inactivity");
             }
         }
         private void PrintReport()
@@ -97,7 +96,7 @@ namespace GameServer
             Console.Clear();
             Console.WriteLine($"Rooms: {_chatRooms.Count}");
             Console.WriteLine();
-            foreach (var x in _chatRooms)
+            foreach(var x in _chatRooms)
             {
                 var lifeTimeLeft = x.LastActivityDate - (DateTime.UtcNow - _config.EmptyRoomLifeTime);
                 Console.WriteLine($"Room {x.Id}, member count: {x.NumberOfMembers}, life time left: {lifeTimeLeft.Seconds} sec");
@@ -113,10 +112,10 @@ namespace GameServer
         }
         protected virtual void Dispose(Boolean disposing)
         {
-            if (!_disposed)
+            if(!_disposed)
             {
                 ReleaseUnmanagedResources();
-                if (disposing)
+                if(disposing)
                     ReleaseManagedResources();
 
                 _disposed = true;

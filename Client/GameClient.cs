@@ -44,25 +44,25 @@ namespace ClientManager
         }
         private void DoWork()
         {
-            while (true)
+            while(true)
             {
                 try
                 {
                     Communicate();
                 }
-                catch (ThreadAbortException)
+                catch(ThreadAbortException)
                 {
                     //TODO: Sometimes occur when Thread disposing, maybe investigation required
                 }
-                catch (SocketException ex)
+                catch(SocketException ex)
                 {
                     Console.WriteLine($"Client {_config.ClientId}: Server unavalible. Retrying to connect.");
                 }
-                catch (IOException ex)
+                catch(IOException ex)
                 {
                     Console.WriteLine($"Client {_config.ClientId}: Server unavalible. Retrying to connect.");
                 }
-                catch (Exception ex)
+                catch(Exception ex)
                 {
                     Console.WriteLine($"Client {_config.ClientId}: Something is broken:");
                     Console.WriteLine(ex.Message);
@@ -76,10 +76,10 @@ namespace ClientManager
         }
         private void Communicate()
         {
-            while (true)
+            while(true)
             {
                 NetworkStream stream;
-                if (_client == null || !_client.Connected)
+                if(_client == null || !_client.Connected)
                 {
                     stream = Connect();
                     SendConnectionRequest(stream);
@@ -90,9 +90,9 @@ namespace ClientManager
                     stream = _client.GetStream();
                 }
 
-                if (_isConnectionEstablished)
+                if(_isConnectionEstablished)
                 {
-                    if (stream.DataAvailable)
+                    if(stream.DataAvailable)
                         ReceiveMessage(stream);
                     SendMessage(stream);
                 }
@@ -141,10 +141,10 @@ namespace ClientManager
         }
         protected virtual void Dispose(Boolean disposing)
         {
-            if (!_disposed)
+            if(!_disposed)
             {
                 ReleaseUnmanagedResources();
-                if (disposing)
+                if(disposing)
                     ReleaseManagedResources();
 
                 _disposed = true;
