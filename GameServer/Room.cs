@@ -1,18 +1,18 @@
-﻿using System;
+﻿using Common.Extensions;
+using Common.Models;
+using GameServer.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Common.Extensions;
-using Common.Models;
-using GameServer.Models;
 
 namespace GameServer
 {
     public class Room : IDisposable
     {
         private readonly Thread _chatThread;
+        private Boolean _disposed;
         private readonly List<RoomMember> _members;
-        private bool _disposed;
 
 
         public Room(Guid id)
@@ -27,55 +27,43 @@ namespace GameServer
 
         // PROPERTIES /////////////////////////////////////////////////////////////////////////////
         public Guid Id { get; set; }
-
-        public int NumberOfMembers
+        public Int32 NumberOfMembers
         {
             get
             {
-                lock (_members)
+                lock(_members)
                 {
                     return _members.Count();
                 }
             }
         }
-
         public DateTime LastActivityDate { get; set; }
-
-
-        // IDisposable ////////////////////////////////////////////////////////////////////////////
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
 
 
         // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
         public void AddParticipiant(RoomMember newMember)
         {
-            lock (_members)
-            {
+            lock(_members)
                 _members.Add(newMember);
-            }
         }
-
         private void BeginChatting()
         {
-            while (true)
+            while(true)
+            {
                 try
                 {
-                    lock (_members)
+                    lock(_members)
                     {
-                        foreach (var x in _members)
+                        foreach(var x in _members)
                         {
-                            if (!x.Client.Connected)
+                            if(!x.Client.Connected)
                             {
                                 Console.WriteLine($"Client {x.Id} disconnected");
                                 _members.Remove(x);
                                 continue;
                             }
 
-                            if (x.Stream.DataAvailable)
+                            if(x.Stream.DataAvailable)
                             {
                                 LastActivityDate = DateTime.UtcNow;
 
@@ -87,60 +75,67 @@ namespace GameServer
 
                     Thread.Sleep(10);
                 }
-                catch (ThreadAbortException)
+                catch(ThreadAbortException)
                 {
                     //TODO: Sometimes occur when Thread disposing, maybe investigation required
                 }
-                catch (Exception ex)
+                catch(Exception ex)
                 {
                     Console.WriteLine($"{nameof(BeginChatting)} something is broken: {ex.Message}");
 #if DEBUG
                     throw;
 #endif
                 }
+            }
         }
-
         private void SendMessageToNeighbors(Message message, RoomMember current)
         {
-            var roommates = _members.Except(new[] {current});
-            foreach (var x in roommates)
+            var roommates = _members.Except(new[] { current });
+            foreach(var x in roommates)
+            {
                 x.Stream.WriteObject(message);
+            }
         }
-
         private void SendEcho(Message message, RoomMember current)
         {
             current.Stream.WriteObject(message);
         }
 
-        protected virtual void Dispose(bool disposing)
+
+        // IDisposable ////////////////////////////////////////////////////////////////////////////
+        public void Dispose()
         {
-            if (!_disposed)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(Boolean disposing)
+        {
+            if(!_disposed)
             {
                 ReleaseUnmanagedResources();
-                if (disposing)
+                if(disposing)
                     ReleaseManagedResources();
 
                 _disposed = true;
             }
         }
-
         private void ReleaseUnmanagedResources()
         {
             // We didn't have its yet.
         }
-
         private void ReleaseManagedResources()
         {
             _chatThread?.Abort();
             DisposeParticipiants();
         }
-
         private void DisposeParticipiants()
         {
-            lock (_members)
+            lock(_members)
             {
-                foreach (var x in _members)
+                foreach(var x in _members)
+                {
                     x.Client.Close();
+                }
             }
         }
     }

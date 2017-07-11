@@ -1,20 +1,20 @@
-﻿using System;
+﻿using Common.Extensions;
+using Common.Models;
+using GameServer.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
-using Common.Extensions;
-using Common.Models;
-using GameServer.Models;
 
 namespace GameServer
 {
     public class RoomManager : IDisposable
     {
+        private Boolean _disposed;
         private readonly List<Room> _chatRooms;
-        private readonly RoomManagerConfig _config;
         private readonly Thread _roomCleanUpThread;
-        private bool _disposed;
+        private readonly RoomManagerConfig _config;
 
 
         public RoomManager(RoomManagerConfig config)
@@ -23,14 +23,6 @@ namespace GameServer
             _chatRooms = new List<Room>();
             _roomCleanUpThread = new Thread(RoomCleanUp);
             _roomCleanUpThread.Start();
-        }
-
-
-        // IDisposable ////////////////////////////////////////////////////////////////////////////
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
 
@@ -49,17 +41,17 @@ namespace GameServer
                     _chatRooms.Add(requestedRoom);
                 }
 
-                requestedRoom.AddParticipiant(new RoomMember
+                requestedRoom.AddParticipiant(new RoomMember()
                 {
                     Id = request.ClientId,
                     Client = client
                 });
             }
         }
-
         private void RoomCleanUp()
         {
             while (true)
+            {
                 try
                 {
                     lock (_chatRooms)
@@ -82,16 +74,15 @@ namespace GameServer
                     throw;
 #endif
                 }
+            }
         }
-
         private Room[] CollectObsoleteRooms()
         {
             return (from x in _chatRooms
-                let delitingRoomThreshold = DateTime.UtcNow - _config.EmptyRoomLifeTime
-                where delitingRoomThreshold > x.LastActivityDate
-                select x).ToArray();
+                    let delitingRoomThreshold = DateTime.UtcNow - _config.EmptyRoomLifeTime
+                    where delitingRoomThreshold > x.LastActivityDate
+                    select x).ToArray();
         }
-
         private void DeleteObsoleteRooms(Room[] obsoleteRooms)
         {
             foreach (var x in obsoleteRooms)
@@ -100,7 +91,6 @@ namespace GameServer
                 x.Dispose();
             }
         }
-
         private void PrintReport()
         {
             Console.Clear();
@@ -109,12 +99,18 @@ namespace GameServer
             foreach (var x in _chatRooms)
             {
                 var lifeTimeLeft = x.LastActivityDate - (DateTime.UtcNow - _config.EmptyRoomLifeTime);
-                Console.WriteLine(
-                    $"Room {x.Id}, members count: {x.NumberOfMembers}, life time left: {lifeTimeLeft.Seconds} sec");
+                Console.WriteLine($"Room {x.Id}, members count: {x.NumberOfMembers}, life time left: {lifeTimeLeft.Seconds} sec");
             }
         }
 
-        protected virtual void Dispose(bool disposing)
+
+        // IDisposable ////////////////////////////////////////////////////////////////////////////
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(Boolean disposing)
         {
             if (!_disposed)
             {
@@ -125,12 +121,10 @@ namespace GameServer
                 _disposed = true;
             }
         }
-
         private void ReleaseUnmanagedResources()
         {
             // We didn't have its yet.
         }
-
         private void ReleaseManagedResources()
         {
             _roomCleanUpThread?.Abort();

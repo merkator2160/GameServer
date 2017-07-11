@@ -1,12 +1,12 @@
-﻿using System;
+﻿using ClientManager.Models;
+using System;
 using System.Collections.Generic;
-using ClientManager.Models;
 
 namespace ClientManager
 {
-    internal static class Program
+    static class Program
     {
-        private static void Main(string[] args)
+        static void Main(String[] args)
         {
             var clients = GenerateClients();
 
@@ -19,7 +19,7 @@ namespace ClientManager
         // SUPPORT FUNCTIONS //////////////////////////////////////////////////////////////////////
         private static GameClient[] GenerateClients()
         {
-            var roomsIds = new List<Guid>
+            var roomsIds = new List<Guid>()
             {
                 Guid.NewGuid(),
                 Guid.NewGuid(),
@@ -27,9 +27,9 @@ namespace ClientManager
             };
 
             var clients = new List<GameClient>(30);
-            for (var i = 1; i <= 2; i++)
+            for(int i = 1; i <= 2; i++)
             {
-                var client = new GameClient(new ClientConfig
+                var client = new GameClient(new ClientConfig()
                 {
                     RoomId = roomsIds[0],
                     NickName = $"Client {i}"
@@ -37,9 +37,9 @@ namespace ClientManager
                 client.Start();
                 clients.Add(client);
             }
-            for (var i = 3; i <= 3; i++)
+            for(int i = 3; i <= 3; i++)
             {
-                var client = new GameClient(new ClientConfig
+                var client = new GameClient(new ClientConfig()
                 {
                     RoomId = roomsIds[1],
                     NickName = $"Client {i}"
@@ -50,11 +50,12 @@ namespace ClientManager
 
             return clients.ToArray();
         }
-
         private static void DisposeClients(IEnumerable<GameClient> clients)
         {
-            foreach (var x in clients)
+            foreach(var x in clients)
+            {
                 x.Dispose();
+            }
         }
     }
 }

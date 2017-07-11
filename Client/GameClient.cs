@@ -1,40 +1,31 @@
-﻿using System;
+﻿using ClientManager.Models;
+using Common.Extensions;
+using Common.Models;
+using System;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading;
-using ClientManager.Models;
-using Common.Extensions;
-using Common.Models;
 
 namespace ClientManager
 {
     public class GameClient : IDisposable
     {
-        private readonly ClientConfig _config;
         private TcpClient _client;
-        private bool _disposed;
-        private bool _isConnectionEstablished;
-        private int _sentMessagesCounter;
+        private Boolean _isConnectionEstablished;
+        private Boolean _disposed;
         private Thread _workerThread;
+        private readonly ClientConfig _config;
+        private Int32 _sentMessagesCounter;
 
 
         public GameClient() : this(new ClientConfig())
         {
-        }
 
+        }
         public GameClient(ClientConfig config)
         {
             _config = config;
         }
-
-
-        // IDisposable ////////////////////////////////////////////////////////////////////////////
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
         ~GameClient()
         {
             Dispose(false);
@@ -47,34 +38,32 @@ namespace ClientManager
             _workerThread = new Thread(DoWork);
             _workerThread.Start();
         }
-
         public void Stop()
         {
             _workerThread?.Abort();
             _client?.Close();
         }
-
         private void DoWork()
         {
-            while (true)
+            while(true)
             {
                 try
                 {
                     Communicate();
                 }
-                catch (ThreadAbortException)
+                catch(ThreadAbortException)
                 {
                     //TODO: Sometimes occur when Thread disposing, maybe investigation required
                 }
-                catch (SocketException ex)
+                catch(SocketException ex)
                 {
                     Console.WriteLine($"Client {_config.ClientId}: Server unavalible. Retrying to connect.");
                 }
-                catch (IOException ex)
+                catch(IOException ex)
                 {
                     Console.WriteLine($"Client {_config.ClientId}: Server unavalible. Retrying to connect.");
                 }
-                catch (Exception ex)
+                catch(Exception ex)
                 {
                     Console.WriteLine($"Client {_config.ClientId}: Something is broken:");
                     Console.WriteLine(ex.Message);
@@ -86,13 +75,12 @@ namespace ClientManager
                 Thread.Sleep(ClientConfig.ReconnectDelay);
             }
         }
-
         private void Communicate()
         {
-            while (true)
+            while(true)
             {
                 NetworkStream stream;
-                if (_client == null || !_client.Connected)
+                if(_client == null || !_client.Connected)
                 {
                     stream = Connect();
                     SendConnectionRequest(stream);
@@ -103,16 +91,15 @@ namespace ClientManager
                     stream = _client.GetStream();
                 }
 
-                if (_isConnectionEstablished)
+                if(_isConnectionEstablished)
                 {
-                    if (stream.DataAvailable)
+                    if(stream.DataAvailable)
                         ReceiveMessage(stream);
                     SendMessage(stream);
                 }
                 Thread.Sleep(ClientConfig.SendMessageDelay);
             }
         }
-
         private NetworkStream Connect()
         {
             _client = new TcpClient(_config.Host, _config.Port)
@@ -125,49 +112,51 @@ namespace ClientManager
 
             return _client.GetStream();
         }
-
         private void SendConnectionRequest(NetworkStream stream)
         {
-            stream.WriteObject(new ConnectionRequest
+            stream.WriteObject(new ConnectionRequest()
             {
                 RoomId = _config.RoomId,
                 ClientId = _config.ClientId
             });
         }
-
         private void SendMessage(NetworkStream stream)
         {
             _sentMessagesCounter++;
-            stream.WriteObject(new Message
+            stream.WriteObject(new Message()
             {
                 From = _config.NickName,
                 Body = $"Message number {_sentMessagesCounter}"
             });
         }
-
         private void ReceiveMessage(NetworkStream stream)
         {
             var message = stream.ReadObject<Message>();
             Console.WriteLine($"{message.From}: {message.Body}");
         }
 
-        protected virtual void Dispose(bool disposing)
+
+        // IDisposable ////////////////////////////////////////////////////////////////////////////
+        public void Dispose()
         {
-            if (!_disposed)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(Boolean disposing)
+        {
+            if(!_disposed)
             {
                 ReleaseUnmanagedResources();
-                if (disposing)
+                if(disposing)
                     ReleaseManagedResources();
 
                 _disposed = true;
             }
         }
-
         private void ReleaseUnmanagedResources()
         {
             // We didn't have its yet.
         }
-
         private void ReleaseManagedResources()
         {
             Stop();

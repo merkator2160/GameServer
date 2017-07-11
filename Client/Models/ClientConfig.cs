@@ -4,12 +4,12 @@ namespace ClientManager.Models
 {
     public class ClientConfig
     {
-        private const string DefaultHost = "127.0.0.1";
-        private const int DefaultPort = 8888;
-        public const int SendMessageDelay = 100;
-        public const int ReconnectDelay = 3000;
-        public const int ReceiveOperationsTimeout = 100;
-        public const int SendOperationsTimeout = 100;
+        private const String DefaultHost = "127.0.0.1";
+        private const Int32 DefaultPort = 8888;
+        public const Int32 SendMessageDelay = 100;
+        public const Int32 ReconnectDelay = 3000;
+        public const Int32 ReceiveOperationsTimeout = 100;
+        public const Int32 SendOperationsTimeout = 100;
 
 
         public ClientConfig()
@@ -26,12 +26,11 @@ namespace ClientManager.Models
 
 
         // PROPERTIES /////////////////////////////////////////////////////////////////////////////
-        public string NickName { get; set; }
-
-        public string Host { get; set; }
-        public int Port { get; set; }
+        public String NickName { get; set; }
+        public String Host { get; set; }
+        public Int32 Port { get; set; }
         public Guid ClientId { get; set; }
         public Guid RoomId { get; set; }
-        public bool IsWritingEcho { get; set; }
+        public Boolean IsWritingEcho { get; set; }
     }
 }
