@@ -31,7 +31,7 @@ namespace GameServer
         {
             get
             {
-                lock (_members)
+                lock(_members)
                 {
                     return _members.Count();
                 }
@@ -43,43 +43,43 @@ namespace GameServer
         // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
         public void AddParticipiant(RoomMember newMember)
         {
-            lock (_members)
+            lock(_members)
                 _members.Add(newMember);
         }
         private void BeginChatting()
         {
-            while (true)
+            while(true)
             {
                 try
                 {
-                    lock (_members)
+                    lock(_members)
                     {
-                        foreach (var x in _members)
+                        foreach(var x in _members)
                         {
-                            if (!x.Client.Connected)
+                            if(!x.Client.Connected)
                             {
                                 Console.WriteLine($"Client {x.Id} disconnected");
                                 _members.Remove(x);
                                 continue;
                             }
 
-                            if (x.Stream.DataAvailable)
+                            if(x.Stream.DataAvailable)
                             {
                                 LastActivityDate = DateTime.UtcNow;
 
                                 var receivedMessage = x.Stream.ReadObject<Message>();
-                                SendMessageToNeighbors(receivedMessage.Body, x);
+                                SendMessageToNeighbors(receivedMessage, x);
                             }
                         }
                     }
 
                     Thread.Sleep(10);
                 }
-                catch (ThreadAbortException)
+                catch(ThreadAbortException)
                 {
                     //TODO: Sometimes occur when Thread disposing, maybe investigation required
                 }
-                catch (Exception ex)
+                catch(Exception ex)
                 {
                     Console.WriteLine($"{nameof(BeginChatting)} something is broken: {ex.Message}");
 #if DEBUG
@@ -88,23 +88,17 @@ namespace GameServer
                 }
             }
         }
-        private void SendMessageToNeighbors(String message, RoomMember current)
+        private void SendMessageToNeighbors(Message message, RoomMember current)
         {
             var roommates = _members.Except(new[] { current });
-            foreach (var x in roommates)
+            foreach(var x in roommates)
             {
-                x.Stream.WriteObject(new Message()
-                {
-                    Body = message
-                });
+                x.Stream.WriteObject(message);
             }
         }
-        private void SendEcho(String message, RoomMember current)
+        private void SendEcho(Message message, RoomMember current)
         {
-            current.Stream.WriteObject(new Message()
-            {
-                Body = $"Echo: {message}"
-            });
+            current.Stream.WriteObject(message);
         }
 
 
@@ -116,10 +110,10 @@ namespace GameServer
         }
         protected virtual void Dispose(Boolean disposing)
         {
-            if (!_disposed)
+            if(!_disposed)
             {
                 ReleaseUnmanagedResources();
-                if (disposing)
+                if(disposing)
                     ReleaseManagedResources();
 
                 _disposed = true;
@@ -136,9 +130,9 @@ namespace GameServer
         }
         private void DisposeParticipiants()
         {
-            lock (_members)
+            lock(_members)
             {
-                foreach (var x in _members)
+                foreach(var x in _members)
                 {
                     x.Client.Close();
                 }

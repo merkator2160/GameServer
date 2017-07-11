@@ -16,12 +16,17 @@ namespace ClientManager.Models
         {
             Host = DefaultHost;
             Port = DefaultPort;
-            ClientId = Guid.NewGuid();
+
+            var clientId = Guid.NewGuid();
+            ClientId = clientId;
+            NickName = clientId.ToString();
+
             RoomId = Guid.NewGuid();
         }
 
 
         // PROPERTIES /////////////////////////////////////////////////////////////////////////////
+        public String NickName { get; set; }
         public String Host { get; set; }
         public Int32 Port { get; set; }
         public Guid ClientId { get; set; }

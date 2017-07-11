@@ -8,6 +8,17 @@ namespace ClientManager
     {
         static void Main(String[] args)
         {
+            var clients = GenerateClients();
+
+            Console.ReadKey();
+
+            DisposeClients(clients);
+        }
+
+
+        // SUPPORT FUNCTIONS //////////////////////////////////////////////////////////////////////
+        private static GameClient[] GenerateClients()
+        {
             var roomsIds = new List<Guid>()
             {
                 Guid.NewGuid(),
@@ -16,28 +27,32 @@ namespace ClientManager
             };
 
             var clients = new List<GameClient>(30);
-            for (int i = 0; i < 2; i++)
+            for(int i = 1; i <= 2; i++)
             {
                 var client = new GameClient(new ClientConfig()
                 {
-                    RoomId = roomsIds[0]
+                    RoomId = roomsIds[0],
+                    NickName = $"Client {i}"
                 });
                 client.Start();
                 clients.Add(client);
             }
-            for (int i = 0; i < 1; i++)
+            for(int i = 3; i <= 3; i++)
             {
                 var client = new GameClient(new ClientConfig()
                 {
-                    RoomId = roomsIds[1]
+                    RoomId = roomsIds[1],
+                    NickName = $"Client {i}"
                 });
                 client.Start();
                 clients.Add(client);
             }
 
-            Console.ReadKey();
-
-            foreach (var x in clients)
+            return clients.ToArray();
+        }
+        private static void DisposeClients(IEnumerable<GameClient> clients)
+        {
+            foreach(var x in clients)
             {
                 x.Dispose();
             }

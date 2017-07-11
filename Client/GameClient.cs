@@ -15,6 +15,7 @@ namespace ClientManager
         private Boolean _disposed;
         private Thread _workerThread;
         private readonly ClientConfig _config;
+        private Int32 _sentMessagesCounter;
 
 
         public GameClient() : this(new ClientConfig())
@@ -121,15 +122,17 @@ namespace ClientManager
         }
         private void SendMessage(NetworkStream stream)
         {
+            _sentMessagesCounter++;
             stream.WriteObject(new Message()
             {
-                Body = $"Hi from {_config.ClientId}"
+                From = _config.NickName,
+                Body = $"Message number {_sentMessagesCounter}"
             });
         }
         private void ReceiveMessage(NetworkStream stream)
         {
-            var message = stream.ReadObject<Message>().Body;
-            Console.WriteLine($"Client id: {_config.ClientId}, Room id: {_config.RoomId}: {message}");
+            var message = stream.ReadObject<Message>();
+            Console.WriteLine($"{message.From}: {message.Body}");
         }
 
 
