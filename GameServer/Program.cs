@@ -1,29 +1,29 @@
-﻿using GameServer.Models;
-using System;
+﻿using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
+using GameServer.Models;
 
 namespace GameServer
 {
-    static class Program
+    internal static class Program
     {
-        private const String Host = "127.0.0.1";
-        private const Int32 Port = 8888;
+        private const string Host = "127.0.0.1";
+        private const int Port = 8888;
 
         private static TcpListener _tcpListener;
         private static Thread _clientWorkerThread;
         private static RoomManager _roomManager;
 
 
-        static void Main(String[] args)
+        private static void Main(string[] args)
         {
             CheckAnyOtherInstances();
 
-            _roomManager = new RoomManager(new RoomManagerConfig()
+            _roomManager = new RoomManager(new RoomManagerConfig
             {
                 CleanUpThreadIdle = TimeSpan.FromSeconds(1),
                 EmptyRoomLifeTime = TimeSpan.FromMinutes(1)
@@ -47,7 +47,6 @@ namespace GameServer
         private static void WaitForNewClient()
         {
             while (true)
-            {
                 try
                 {
                     var tcpClient = _tcpListener.AcceptTcpClient();
@@ -68,13 +67,13 @@ namespace GameServer
                     throw;
 #endif
                 }
-            }
         }
+
         private static void CheckAnyOtherInstances()
         {
             var guid = Marshal.GetTypeLibGuidForAssembly(Assembly.GetExecutingAssembly()).ToString();
 
-            Boolean created;
+            bool created;
             var mutexObj = new Mutex(true, guid, out created);
             if (!created)
             {
