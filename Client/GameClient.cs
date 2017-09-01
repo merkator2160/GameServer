@@ -1,4 +1,4 @@
-﻿using ClientManager.Models;
+﻿using Client.Models;
 using Common.Extensions;
 using Common.Models;
 using System;
@@ -6,110 +6,164 @@ using System.IO;
 using System.Net.Sockets;
 using System.Threading;
 
-namespace ClientManager
+namespace Client
 {
     public class GameClient : IDisposable
     {
+        private Int32 _counter;
         private TcpClient _client;
-        private Boolean _isConnectionEstablished;
-        private Boolean _disposed;
-        private Thread _workerThread;
+        private readonly ManualResetEventSlim _workingMres;
+        private readonly ManualResetEventSlim _connectedMres;
         private readonly ClientConfig _config;
 
 
-        public GameClient() : this(new ClientConfig())
-        {
-
-        }
         public GameClient(ClientConfig config)
         {
             _config = config;
+            _workingMres = new ManualResetEventSlim(false);
+            _connectedMres = new ManualResetEventSlim(false);
+
+            ThreadPool.QueueUserWorkItem(ConnectionThread);
+            ThreadPool.QueueUserWorkItem(ReceivingThread);
+            ThreadPool.QueueUserWorkItem(SendingThread);
         }
-        ~GameClient()
+
+
+        public delegate void UserNotificationAvaliableEventHandler(object sender, UserNotificationAvaliableEventArgs e);
+        public event UserNotificationAvaliableEventHandler UserNotificationAvaliable = (sender, args) => { };
+
+
+        // THREADS ////////////////////////////////////////////////////////////////////////////////
+        private void ConnectionThread(Object state)
         {
-            Dispose(false);
+            while (true)
+            {
+                _workingMres.Wait();
+
+                if (_client == null || !_client.Connected)
+                {
+                    Connect();
+                }
+
+                Thread.Sleep(10);
+            }
+        }
+        private void ReceivingThread(Object state)
+        {
+            while (true)
+            {
+                try
+                {
+                    _connectedMres.Wait();
+
+                    using (var stream = _client.GetStream())
+                    {
+                        while (true)
+                        {
+                            _workingMres.Wait();
+                            ReceiveMessage(stream);
+                        }
+                    }
+                }
+                catch (SocketException ex)
+                {
+
+                }
+                catch (IOException ex)
+                {
+
+                }
+                catch (ArgumentException ex)
+                {
+
+                }
+                catch (Exception ex)
+                {
+                    UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs(ex.Message));
+                    throw;
+                }
+                finally
+                {
+                    _connectedMres.Reset();
+                }
+            }
+        }
+        private void SendingThread(Object state)
+        {
+            while (true)
+            {
+                try
+                {
+                    _connectedMres.Wait();
+
+                    using (var stream = _client.GetStream())
+                    {
+                        while (true)
+                        {
+                            _workingMres.Wait();
+                            SendMessage(stream);
+                            Thread.Sleep(500);
+                        }
+                    }
+                }
+                catch (SocketException ex)
+                {
+
+                }
+                catch (IOException ex)
+                {
+
+                }
+                catch (ArgumentException ex)
+                {
+
+                }
+                catch (Exception ex)
+                {
+                    UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs(ex.Message));
+                    throw;
+                }
+                finally
+                {
+                    _connectedMres.Reset();
+                }
+            }
         }
 
 
         // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
         public void Start()
         {
-            _workerThread = new Thread(DoWork);
-            _workerThread.Start();
+            _workingMres.Set();
         }
         public void Stop()
         {
-            _workerThread?.Abort();
-            _client?.Close();
+            _workingMres.Reset();
         }
-        private void DoWork()
+        private void Connect()
         {
-            while (true)
+            try
             {
-                try
-                {
-                    Communicate();
-                }
-                catch (ThreadAbortException)
-                {
-                    //TODO: Sometimes occur when Thread disposing, maybe investigation required
-                }
-                catch (SocketException ex)
-                {
-                    Console.WriteLine($"Client {_config.ClientId}: Server unavalible. Retrying to connect.");
-                }
-                catch (IOException ex)
-                {
-                    Console.WriteLine($"Client {_config.ClientId}: Server unavalible. Retrying to connect.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Client {_config.ClientId}: Something is broken:");
-                    Console.WriteLine(ex.Message);
-#if DEBUG
-                    throw;
-#endif
-                }
-
-                Thread.Sleep(ClientConfig.ReconnectDelay);
+                _client = new TcpClient(_config.Host, _config.Port);
+                SendConnectionRequest(_client.GetStream());
+                UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs("Connected..."));
+                _connectedMres.Set();
             }
-        }
-        private void Communicate()
-        {
-            while (true)
+            catch (SocketException ex)
             {
-                NetworkStream stream;
-                if (_client == null || !_client.Connected)
-                {
-                    stream = Connect();
-                    SendConnectionRequest(stream);
-                    _isConnectionEstablished = true;
-                }
-                else
-                {
-                    stream = _client.GetStream();
-                }
-
-                if (_isConnectionEstablished)
-                {
-                    if (stream.DataAvailable)
-                        ReceiveMessage(stream);
-                    SendMessage(stream);
-                }
-                Thread.Sleep(ClientConfig.SendMessageDelay);
+                UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs("Server unavalible. Retrying to connect."));
+                Thread.Sleep(_config.ReconnectDelay);
             }
-        }
-        private NetworkStream Connect()
-        {
-            _client = new TcpClient(_config.Host, _config.Port)
+            catch (IOException ex)
             {
-                SendTimeout = ClientConfig.SendOperationsTimeout,
-                ReceiveTimeout = ClientConfig.ReceiveOperationsTimeout
-            };
-
-            Console.WriteLine($"Client {_config.ClientId}: Connected");
-
-            return _client.GetStream();
+                UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs("Server unavalible. Retrying to connect."));
+                Thread.Sleep(_config.ReconnectDelay);
+            }
+            catch (Exception ex)
+            {
+                UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs(ex.Message));
+                throw;
+            }
         }
         private void SendConnectionRequest(NetworkStream stream)
         {
@@ -123,7 +177,7 @@ namespace ClientManager
         {
             stream.WriteObject(new Message()
             {
-                Body = $"Hi from {_config.ClientId}"
+                Body = $"Message number: {_counter++}"
             });
         }
         private void ReceiveMessage(NetworkStream stream)
@@ -136,27 +190,9 @@ namespace ClientManager
         // IDisposable ////////////////////////////////////////////////////////////////////////////
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-        protected virtual void Dispose(Boolean disposing)
-        {
-            if (!_disposed)
-            {
-                ReleaseUnmanagedResources();
-                if (disposing)
-                    ReleaseManagedResources();
-
-                _disposed = true;
-            }
-        }
-        private void ReleaseUnmanagedResources()
-        {
-            // We didn't have its yet.
-        }
-        private void ReleaseManagedResources()
-        {
-            Stop();
+            _client?.Close();
+            _workingMres?.Dispose();
+            _connectedMres?.Dispose();
         }
     }
 }

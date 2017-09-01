@@ -1,19 +1,19 @@
-﻿using Common.Extensions;
+﻿using Common;
+using Common.Extensions;
 using Common.Models;
 using GameServer.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 
 namespace GameServer
 {
-    public class RoomManager : IDisposable
+    internal class RoomManager : IDisposable
     {
-        private Boolean _disposed;
         private readonly List<Room> _chatRooms;
-        private readonly Thread _roomCleanUpThread;
         private readonly RoomManagerConfig _config;
 
 
@@ -21,8 +21,36 @@ namespace GameServer
         {
             _config = config;
             _chatRooms = new List<Room>();
-            _roomCleanUpThread = new Thread(RoomCleanUp);
-            _roomCleanUpThread.Start();
+
+            ThreadPool.QueueUserWorkItem(RoomCleanUpThread);
+        }
+
+
+        public event UserNotificationAvaliableEventHandler UserNotificationAvaliable = (sender, args) => { };
+
+
+        // THREADS ////////////////////////////////////////////////////////////////////////////////
+        private void RoomCleanUpThread(Object state)
+        {
+            while (true)
+            {
+                try
+                {
+                    lock (_chatRooms)
+                    {
+                        var obsoleteRooms = FindObsoleteRooms();
+                        DeleteObsoleteRooms(obsoleteRooms);
+                        PrintReport();
+                    }
+
+                    Thread.Sleep(_config.CleanUpThreadIdle);
+                }
+                catch (Exception ex)
+                {
+                    UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs(ex.Message));
+                    throw;
+                }
+            }
         }
 
 
@@ -41,42 +69,10 @@ namespace GameServer
                     _chatRooms.Add(requestedRoom);
                 }
 
-                requestedRoom.AddParticipiant(new RoomMember()
-                {
-                    Id = request.ClientId,
-                    Client = client
-                });
+                requestedRoom.AddParticipiant(new BufferedClient<Message>(request.ClientId, client));
             }
         }
-        private void RoomCleanUp()
-        {
-            while (true)
-            {
-                try
-                {
-                    lock (_chatRooms)
-                    {
-                        var obsoleteRooms = CollectObsoleteRooms();
-                        DeleteObsoleteRooms(obsoleteRooms);
-                        PrintReport();
-                    }
-
-                    Thread.Sleep(_config.CleanUpThreadIdle);
-                }
-                catch (ThreadAbortException)
-                {
-                    //TODO: Sometimes occur when Thread disposing, maybe investigation required
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"{nameof(RoomCleanUp)} something is broken: {ex.Message}");
-#if DEBUG
-                    throw;
-#endif
-                }
-            }
-        }
-        private Room[] CollectObsoleteRooms()
+        private Room[] FindObsoleteRooms()
         {
             return (from x in _chatRooms
                     let delitingRoomThreshold = DateTime.UtcNow - _config.EmptyRoomLifeTime
@@ -89,46 +85,34 @@ namespace GameServer
             {
                 _chatRooms.Remove(x);
                 x.Dispose();
-                Console.WriteLine($"Room {x.Id} closed due inactivity");
+                UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs($"Room {x.Id} closed due inactivity"));
             }
         }
         private void PrintReport()
         {
-            Console.Clear();
-            Console.WriteLine($"Rooms: {_chatRooms.Count}");
-            Console.WriteLine();
+            var strBuilder = new StringBuilder();
+
+            strBuilder.AppendLine($"Rooms: {_chatRooms.Count}");
+            strBuilder.AppendLine();
+            strBuilder.AppendLine();
+
             foreach (var x in _chatRooms)
             {
                 var lifeTimeLeft = x.LastActivityDate - (DateTime.UtcNow - _config.EmptyRoomLifeTime);
-                Console.WriteLine($"Room {x.Id}, member count: {x.NumberOfMembers}, life time left: {lifeTimeLeft.Seconds} sec");
+                strBuilder.AppendLine($"Room {x.Id}, member count: {x.NumberOfMembers}, life time left: {lifeTimeLeft.Seconds} sec");
             }
+
+            UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs(strBuilder.ToString()));
         }
 
 
         // IDisposable ////////////////////////////////////////////////////////////////////////////
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-        protected virtual void Dispose(Boolean disposing)
-        {
-            if (!_disposed)
+            foreach (var x in _chatRooms)
             {
-                ReleaseUnmanagedResources();
-                if (disposing)
-                    ReleaseManagedResources();
-
-                _disposed = true;
+                x.Dispose();
             }
-        }
-        private void ReleaseUnmanagedResources()
-        {
-            // We didn't have its yet.
-        }
-        private void ReleaseManagedResources()
-        {
-            _roomCleanUpThread?.Abort();
         }
     }
 }

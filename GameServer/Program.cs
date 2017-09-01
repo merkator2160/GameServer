@@ -1,8 +1,6 @@
-﻿using GameServer.Models;
+﻿using Common.Models;
+using GameServer.Models;
 using System;
-using System.IO;
-using System.Net;
-using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -11,66 +9,49 @@ namespace GameServer
 {
     static class Program
     {
-        private const String Host = "127.0.0.1";
-        private const Int32 Port = 8888;
+        private static Int32 _port;
 
-        private static TcpListener _tcpListener;
-        private static Thread _clientWorkerThread;
+        private static ConnectionListener _connectionListener;
         private static RoomManager _roomManager;
 
 
         static void Main(String[] args)
         {
-            CheckAnyOtherInstances();
+            CheckForAnotherInstances();
+            ExtractCommandArgs(args);
 
             _roomManager = new RoomManager(new RoomManagerConfig()
             {
                 CleanUpThreadIdle = TimeSpan.FromSeconds(1),
                 EmptyRoomLifeTime = TimeSpan.FromMinutes(1)
             });
+            _roomManager.UserNotificationAvaliable += RoomManagerOnUserNotificationAvaliable;
+            _connectionListener = new ConnectionListener(_port);
+            _connectionListener.NewClientAvaliable += ConnectionListenerOnNewClientAvaliable;
 
-            _tcpListener = new TcpListener(IPAddress.Parse(Host), Port);
-            _tcpListener.Start();
-
-            _clientWorkerThread = new Thread(WaitForNewClient);
-            _clientWorkerThread.Start();
 
             Console.ReadKey();
 
-            _clientWorkerThread.Abort();
-            _tcpListener.Stop();
-            _roomManager.Dispose();
+            _connectionListener?.Dispose();
+            _roomManager?.Dispose();
         }
 
-
-        // FUNCTIONS //////////////////////////////////////////////////////////////////////////////////
-        private static void WaitForNewClient()
+        private static void RoomManagerOnUserNotificationAvaliable(Object sender, UserNotificationAvaliableEventArgs userNotificationAvaliableEventArgs)
         {
-            while (true)
-            {
-                try
-                {
-                    var tcpClient = _tcpListener.AcceptTcpClient();
-                    _roomManager.AcceptClient(tcpClient);
-                }
-                catch (ThreadAbortException)
-                {
-                    //TODO: Sometimes occur when Thread disposing, maybe investigation required
-                }
-                catch (IOException ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"{nameof(WaitForNewClient)} something is broken: {ex.Message}");
-#if DEBUG
-                    throw;
-#endif
-                }
-            }
+            Console.Clear();
+            Console.WriteLine(userNotificationAvaliableEventArgs.Message);
         }
-        private static void CheckAnyOtherInstances()
+
+
+        // EVENTS /////////////////////////////////////////////////////////////////////////////////
+        private static void ConnectionListenerOnNewClientAvaliable(Object sender, NewClientAvaliableEventArgs newClientAvaliableEventArgs)
+        {
+            _roomManager.AcceptClient(newClientAvaliableEventArgs.Client);
+        }
+
+
+        // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
+        private static void CheckForAnotherInstances()
         {
             var guid = Marshal.GetTypeLibGuidForAssembly(Assembly.GetExecutingAssembly()).ToString();
 
@@ -82,6 +63,10 @@ namespace GameServer
                 Thread.Sleep(3000);
                 Environment.Exit(0);
             }
+        }
+        private static void ExtractCommandArgs(String[] args)
+        {
+            _port = args.Length > 0 ? Int32.Parse(args[0]) : 8888;
         }
     }
 }

@@ -1,46 +1,29 @@
-﻿using ClientManager.Models;
+﻿using Client.Models;
 using System;
-using System.Collections.Generic;
 
-namespace ClientManager
+namespace Client
 {
     static class Program
     {
         static void Main(String[] args)
         {
-            var roomsIds = new List<Guid>()
-            {
-                Guid.NewGuid(),
-                Guid.NewGuid(),
-                Guid.NewGuid()
-            };
+            var client = new GameClient(CreateConfigFromCommandArgs(args));
+            client.UserNotificationAvaliable += (sender, eventArgs) => Console.WriteLine(eventArgs.Message);
 
-            var clients = new List<GameClient>(30);
-            for (int i = 0; i < 2; i++)
-            {
-                var client = new GameClient(new ClientConfig()
-                {
-                    RoomId = roomsIds[0]
-                });
-                client.Start();
-                clients.Add(client);
-            }
-            for (int i = 0; i < 1; i++)
-            {
-                var client = new GameClient(new ClientConfig()
-                {
-                    RoomId = roomsIds[1]
-                });
-                client.Start();
-                clients.Add(client);
-            }
+            client.Start();
 
             Console.ReadKey();
 
-            foreach (var x in clients)
-            {
-                x.Dispose();
-            }
+            client.Dispose();
+        }
+        private static ClientConfig CreateConfigFromCommandArgs(String[] args)
+        {
+            var host = args.Length > 0 ? args[0] : "127.0.0.1";
+            var port = args.Length > 1 ? Int32.Parse(args[1]) : 8888;
+            var clientId = args.Length > 2 ? Guid.Parse(args[2]) : Guid.NewGuid();
+            var roomId = args.Length > 3 ? Guid.Parse(args[3]) : Guid.NewGuid();
+
+            return new ClientConfig(host, port, clientId, roomId);
         }
     }
 }
