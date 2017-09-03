@@ -70,6 +70,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BufferedTcpClient.cs" />
+    <Compile Include="Extensions\SocketExtensions.cs" />
     <Compile Include="Models\Enums\MessageType.cs" />
     <Compile Include="Extensions\NetworkStreamExtensions.cs" />
     <Compile Include="Models\Metwork\ConnectionRequest.cs" />

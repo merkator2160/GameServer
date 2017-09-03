@@ -14,10 +14,14 @@ namespace Common
         private readonly TcpClient _client;
         private readonly NetworkStream _networkStream;
 
+
         public BufferedTcpClient(TcpClient client, Boolean keepAlive)
         {
             _client = client;
-            _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, keepAlive);
+            //if (keepAlive)
+            //{
+            //    _client.Client.SetKeepAlive(10000, 10000);
+            //}
             _networkStream = _client.GetStream();
 
             SendMessageQueue = new ConcurrentQueue<T>();
