@@ -2,7 +2,7 @@
 
 namespace Client.Models
 {
-    public class ClientConfig
+    internal class ClientConfig
     {
 
         public const Int32 DefaultSendMessageDelay = 100;
@@ -25,7 +25,6 @@ namespace Client.Models
         public Int32 Port { get; set; }
         public Guid ClientId { get; set; }
         public Guid RoomId { get; set; }
-        public Boolean IsWritingEcho { get; set; }
         public Int32 SendMessageDelay { get; set; }
         public Int32 ReconnectDelay { get; set; }
     }

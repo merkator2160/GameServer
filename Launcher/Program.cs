@@ -11,7 +11,7 @@ namespace Launcher
             {
                 StartInfo =
                 {
-                    FileName = "GameServer.exe"
+                    FileName = "Server.exe"
                 }
             };
             serverProcess.Start();
@@ -27,6 +27,9 @@ namespace Launcher
                 }
             };
             clientProcess.Start();
+
+            Thread.Sleep(5000);
+
             var clientProcess2 = new Process
             {
                 StartInfo =

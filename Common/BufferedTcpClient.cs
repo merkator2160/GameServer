@@ -6,18 +6,19 @@ using System.IO;
 using System.Net.Sockets;
 using System.Threading;
 
-namespace GameServer
+namespace Common
 {
-    public class BufferedClient<T> : IDisposable
+    public class BufferedTcpClient<T> : IDisposable
     {
+        private Boolean _disposed;
         private readonly TcpClient _client;
         private readonly NetworkStream _networkStream;
 
-        public BufferedClient(Guid id, TcpClient client)
+        public BufferedTcpClient(TcpClient client, Boolean keepAlive)
         {
             _client = client;
+            _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, keepAlive);
             _networkStream = _client.GetStream();
-            Id = id;
 
             SendMessageQueue = new ConcurrentQueue<T>();
             ReceivedMessageQueue = new ConcurrentQueue<T>();
@@ -28,8 +29,7 @@ namespace GameServer
 
 
         // PROPERTIES /////////////////////////////////////////////////////////////////////////////
-        public Guid Id { get; }
-        public Boolean IsConnected => _client.Connected;
+        public Boolean Connected => _client.Connected;
         public ConcurrentQueue<T> SendMessageQueue { get; }
         public ConcurrentQueue<T> ReceivedMessageQueue { get; }
 
@@ -37,7 +37,7 @@ namespace GameServer
         // THREADS ////////////////////////////////////////////////////////////////////////////////
         private void ReceivingThread(Object state)
         {
-            while (true)
+            while (!_disposed)
             {
                 try
                 {
@@ -59,7 +59,7 @@ namespace GameServer
         }
         private void SendingThread(Object state)
         {
-            while (true)
+            while (!_disposed)
             {
                 try
                 {
@@ -74,14 +74,8 @@ namespace GameServer
                         _networkStream.WriteObject(message);
                     }
                 }
-                catch (SocketException ex)
-                {
-
-                }
-                catch (IOException ex)
-                {
-
-                }
+                catch (SocketException ex) { }
+                catch (IOException ex) { }
                 catch (Exception ex)
                 {
                     Debug.WriteLine(ex.Message);
@@ -94,8 +88,12 @@ namespace GameServer
         // IDisposable ////////////////////////////////////////////////////////////////////////////
         public void Dispose()
         {
-            _networkStream?.Close();
-            _client?.Close();
+            if (!_disposed)
+            {
+                _disposed = true;
+
+                _client?.Close();
+            }
         }
     }
 }

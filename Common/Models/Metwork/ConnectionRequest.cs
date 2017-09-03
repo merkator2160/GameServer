@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Common.Models
+namespace Common.Models.Metwork
 {
     [Serializable]
     public class ConnectionRequest

@@ -1,4 +1,7 @@
 ﻿using Client.Models;
+using Common;
+using GalaSoft.MvvmLight.Messaging;
+using Microsoft.Practices.Unity;
 using System;
 
 namespace Client
@@ -7,14 +10,27 @@ namespace Client
     {
         static void Main(String[] args)
         {
-            var client = new GameClient(CreateConfigFromCommandArgs(args));
-            client.UserNotificationAvaliable += (sender, eventArgs) => Console.WriteLine(eventArgs.Message);
-
+            var container = ConfigureContainer(args);
+            var consoleWriter = container.Resolve<ConsoleWriter>();
+            var numbersGenerator = container.Resolve<NumberGenerator>();
+            var client = container.Resolve<GameClient>();
             client.Start();
+            numbersGenerator.Start();
 
             Console.ReadKey();
 
-            client.Dispose();
+            container.Dispose();
+        }
+        private static IUnityContainer ConfigureContainer(String[] args)
+        {
+            var container = new UnityContainer();
+            container.RegisterType<IMessenger, Messenger>(new ContainerControlledLifetimeManager());
+            container.RegisterInstance(CreateConfigFromCommandArgs(args));
+            container.RegisterInstance(new NumberGenerator(1000, 500, container.Resolve<IMessenger>()));
+            container.RegisterType<GameClient>();
+            container.RegisterType<ConsoleWriter>(new ContainerControlledLifetimeManager());
+
+            return container;
         }
         private static ClientConfig CreateConfigFromCommandArgs(String[] args)
         {

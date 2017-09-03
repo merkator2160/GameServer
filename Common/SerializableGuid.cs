@@ -7,11 +7,11 @@ namespace Common
     {
         private readonly String _value;
 
-        private SerializableGuid(String value)
+        public SerializableGuid(String value)
         {
             _value = value;
         }
-        private SerializableGuid(Guid guid)
+        public SerializableGuid(Guid guid)
         {
             _value = guid.ToString();
         }

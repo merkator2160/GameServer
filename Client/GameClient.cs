@@ -1,133 +1,148 @@
 ﻿using Client.Models;
+using Common;
 using Common.Extensions;
-using Common.Models;
+using Common.Models.Enums;
+using Common.Models.Metwork;
+using Common.Models.MvvmLight;
+using GalaSoft.MvvmLight.Messaging;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 
 namespace Client
 {
-    public class GameClient : IDisposable
+    internal class GameClient : IDisposable
     {
+        private Boolean _disposed;
+        private readonly IMessenger _messenger;
+
         private Int32 _counter;
-        private TcpClient _client;
+        private BufferedTcpClient<NetworkMessage> _bufferedClient;
         private readonly ManualResetEventSlim _workingMres;
         private readonly ManualResetEventSlim _connectedMres;
         private readonly ClientConfig _config;
+        private readonly Dictionary<MessageType, Action<Byte[]>> _messageDictionary;
 
 
-        public GameClient(ClientConfig config)
+        public GameClient(ClientConfig config, IMessenger messenger)
         {
             _config = config;
+            _messenger = messenger;
+            _messenger.Register<NumberGeneratedMessage>(this, SendMessage);
             _workingMres = new ManualResetEventSlim(false);
             _connectedMres = new ManualResetEventSlim(false);
+            _messageDictionary = new Dictionary<MessageType, Action<Byte[]>>()
+            {
+                { MessageType.Text, HandleTextMessage }
+            };
 
             ThreadPool.QueueUserWorkItem(ConnectionThread);
-            ThreadPool.QueueUserWorkItem(ReceivingThread);
-            ThreadPool.QueueUserWorkItem(SendingThread);
+            ThreadPool.QueueUserWorkItem(ReadingMessagesThread);
         }
-
-
-        public delegate void UserNotificationAvaliableEventHandler(object sender, UserNotificationAvaliableEventArgs e);
-        public event UserNotificationAvaliableEventHandler UserNotificationAvaliable = (sender, args) => { };
 
 
         // THREADS ////////////////////////////////////////////////////////////////////////////////
         private void ConnectionThread(Object state)
         {
-            while (true)
+            while (!_disposed)
             {
                 _workingMres.Wait();
 
-                if (_client == null || !_client.Connected)
+                if (_bufferedClient == null || !_bufferedClient.Connected)
                 {
-                    Connect();
+                    if (!TryConnect())
+                    {
+                        _messenger.Send(new ConsoleMessage("Server unavalible. Retrying to connect."));
+                        Thread.Sleep(_config.ReconnectDelay);
+                        continue;
+                    }
+
+                    _messenger.Send(new ConsoleMessage("Connected..."));
+                    _connectedMres.Set();
                 }
 
                 Thread.Sleep(10);
             }
         }
-        private void ReceivingThread(Object state)
+        private Boolean TryConnect()
         {
-            while (true)
+            try
+            {
+                var tcpClient = new TcpClient(_config.Host, _config.Port);
+                SendConnectionRequest(tcpClient);
+                _bufferedClient = new BufferedTcpClient<NetworkMessage>(tcpClient, false);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (ex is SocketException || ex is IOException)
+                    return false;
+
+                Debug.WriteLine(ex.Message);
+                throw;
+            }
+        }
+        private void SendConnectionRequest(TcpClient client)
+        {
+            var stream = client.GetStream();
+            stream.WriteObject(new ConnectionRequest()
+            {
+                RoomId = _config.RoomId,
+                ClientId = _config.ClientId
+            });
+        }
+
+
+        private void ReadingMessagesThread(Object state)
+        {
+            while (!_disposed)
             {
                 try
                 {
                     _connectedMres.Wait();
-
-                    using (var stream = _client.GetStream())
+                    if (_bufferedClient.ReceivedMessageQueue.IsEmpty)
                     {
-                        while (true)
-                        {
-                            _workingMres.Wait();
-                            ReceiveMessage(stream);
-                        }
+                        Thread.Sleep(10);
+                        continue;
                     }
-                }
-                catch (SocketException ex)
-                {
 
-                }
-                catch (IOException ex)
-                {
-
-                }
-                catch (ArgumentException ex)
-                {
-
+                    if (_bufferedClient.ReceivedMessageQueue.TryDequeue(out NetworkMessage message))
+                    {
+                        _messageDictionary[message.Type].Invoke(message.Data);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs(ex.Message));
+                    if (ex is SocketException || ex is IOException)
+                    {
+                        _connectedMres.Reset();
+                    }
+
+                    Debug.WriteLine(ex.Message);
                     throw;
-                }
-                finally
-                {
-                    _connectedMres.Reset();
                 }
             }
         }
-        private void SendingThread(Object state)
+        private void HandleTextMessage(Byte[] data)
         {
-            while (true)
-            {
-                try
-                {
-                    _connectedMres.Wait();
+            var text = Encoding.UTF8.GetString(data);
+            _messenger.Send(new ConsoleMessage($"Client id: {_config.ClientId}, Room id: {_config.RoomId}: {text}"));
+        }
 
-                    using (var stream = _client.GetStream())
-                    {
-                        while (true)
-                        {
-                            _workingMres.Wait();
-                            SendMessage(stream);
-                            Thread.Sleep(500);
-                        }
-                    }
-                }
-                catch (SocketException ex)
-                {
 
-                }
-                catch (IOException ex)
-                {
+        // HANDLERS ///////////////////////////////////////////////////////////////////////////////
+        private void SendMessage(NumberGeneratedMessage message)
+        {
+            if (_bufferedClient == null || !_bufferedClient.Connected)
+                return;
 
-                }
-                catch (ArgumentException ex)
-                {
-
-                }
-                catch (Exception ex)
-                {
-                    UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs(ex.Message));
-                    throw;
-                }
-                finally
-                {
-                    _connectedMres.Reset();
-                }
-            }
+            var data = Encoding.UTF8.GetBytes(message.Number.ToString());
+            _bufferedClient.SendMessageQueue.Enqueue(new NetworkMessage(MessageType.Text, data));
         }
 
 
@@ -140,59 +155,19 @@ namespace Client
         {
             _workingMres.Reset();
         }
-        private void Connect()
-        {
-            try
-            {
-                _client = new TcpClient(_config.Host, _config.Port);
-                SendConnectionRequest(_client.GetStream());
-                UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs("Connected..."));
-                _connectedMres.Set();
-            }
-            catch (SocketException ex)
-            {
-                UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs("Server unavalible. Retrying to connect."));
-                Thread.Sleep(_config.ReconnectDelay);
-            }
-            catch (IOException ex)
-            {
-                UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs("Server unavalible. Retrying to connect."));
-                Thread.Sleep(_config.ReconnectDelay);
-            }
-            catch (Exception ex)
-            {
-                UserNotificationAvaliable.Invoke(this, new UserNotificationAvaliableEventArgs(ex.Message));
-                throw;
-            }
-        }
-        private void SendConnectionRequest(NetworkStream stream)
-        {
-            stream.WriteObject(new ConnectionRequest()
-            {
-                RoomId = _config.RoomId,
-                ClientId = _config.ClientId
-            });
-        }
-        private void SendMessage(NetworkStream stream)
-        {
-            stream.WriteObject(new Message()
-            {
-                Body = $"Message number: {_counter++}"
-            });
-        }
-        private void ReceiveMessage(NetworkStream stream)
-        {
-            var message = stream.ReadObject<Message>().Body;
-            Console.WriteLine($"Client id: {_config.ClientId}, Room id: {_config.RoomId}: {message}");
-        }
 
 
         // IDisposable ////////////////////////////////////////////////////////////////////////////
         public void Dispose()
         {
-            _client?.Close();
-            _workingMres?.Dispose();
-            _connectedMres?.Dispose();
+            if (!_disposed)
+            {
+                _disposed = true;
+
+                _bufferedClient?.Dispose();
+                _workingMres?.Dispose();
+                _connectedMres?.Dispose();
+            }
         }
     }
 }

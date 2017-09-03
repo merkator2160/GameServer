@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace GameServer.Models
+namespace Server.Models
 {
     public class RoomManagerConfig
     {
