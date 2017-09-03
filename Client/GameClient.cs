@@ -20,15 +20,14 @@ namespace Client
         private Boolean _disposed;
         private readonly IMessenger _messenger;
 
-        private Int32 _counter;
         private BufferedTcpClient<NetworkMessage> _bufferedClient;
         private readonly ManualResetEventSlim _workingMres;
         private readonly ManualResetEventSlim _connectedMres;
-        private readonly ClientConfig _config;
+        private readonly Config _config;
         private readonly Dictionary<MessageType, Action<Byte[]>> _messageDictionary;
 
 
-        public GameClient(ClientConfig config, IMessenger messenger)
+        public GameClient(Config config, IMessenger messenger)
         {
             _config = config;
             _messenger = messenger;
@@ -40,13 +39,13 @@ namespace Client
                 { MessageType.Text, HandleTextMessage }
             };
 
-            ThreadPool.QueueUserWorkItem(ConnectionThread);
+            ThreadPool.QueueUserWorkItem(ConnectionControlThread);
             ThreadPool.QueueUserWorkItem(ReadingMessagesThread);
         }
 
 
         // THREADS ////////////////////////////////////////////////////////////////////////////////
-        private void ConnectionThread(Object state)
+        private void ConnectionControlThread(Object state)
         {
             while (!_disposed)
             {

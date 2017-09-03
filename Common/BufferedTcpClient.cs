@@ -18,6 +18,7 @@ namespace Common
         public BufferedTcpClient(TcpClient client, Boolean keepAlive)
         {
             _client = client;
+            // TODO: SOcket exception, investigation required
             //if (keepAlive)
             //{
             //    _client.Client.SetKeepAlive(10000, 10000);

@@ -1,5 +1,4 @@
 ﻿using Client.Models;
-using Common;
 using GalaSoft.MvvmLight.Messaging;
 using Microsoft.Practices.Unity;
 using System;
@@ -26,20 +25,20 @@ namespace Client
             var container = new UnityContainer();
             container.RegisterType<IMessenger, Messenger>(new ContainerControlledLifetimeManager());
             container.RegisterInstance(CreateConfigFromCommandArgs(args));
-            container.RegisterInstance(new NumberGenerator(1000, 500, container.Resolve<IMessenger>()));
+            container.RegisterInstance(new NumberGenerator(1000, 100, container.Resolve<IMessenger>()));
             container.RegisterType<GameClient>();
             container.RegisterType<ConsoleWriter>(new ContainerControlledLifetimeManager());
 
             return container;
         }
-        private static ClientConfig CreateConfigFromCommandArgs(String[] args)
+        private static Config CreateConfigFromCommandArgs(String[] args)
         {
             var host = args.Length > 0 ? args[0] : "127.0.0.1";
             var port = args.Length > 1 ? Int32.Parse(args[1]) : 8888;
             var clientId = args.Length > 2 ? Guid.Parse(args[2]) : Guid.NewGuid();
             var roomId = args.Length > 3 ? Guid.Parse(args[3]) : Guid.NewGuid();
 
-            return new ClientConfig(host, port, clientId, roomId);
+            return new Config(host, port, clientId, roomId);
         }
     }
 }
