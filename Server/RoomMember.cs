@@ -16,10 +16,10 @@ namespace Server
 {
     internal class RoomMember : IDisposable
     {
+        private Boolean _disposed;
         private readonly String _nickName;
         private readonly IMessenger _roomMessenger;
         private readonly Boolean _sendEcho;
-        private Boolean _disposed;
         private readonly Dictionary<MessageType, Action<Byte[]>> _messageDictionary;
         private readonly ConnectionBuffer _buffer;
 
@@ -35,7 +35,7 @@ namespace Server
             _messageDictionary = new Dictionary<MessageType, Action<Byte[]>>()
             {
                 { MessageType.Text, HandleTextMessage },
-                { MessageType.KeepAlive, (data) => { }}
+                { MessageType.KeepAlive, (data) => { } }
             };
 
             roomMessenger.Register<TextReceiveMessage>(this, RoomMessageTextReceived);
@@ -46,13 +46,6 @@ namespace Server
         // PROPERTIES /////////////////////////////////////////////////////////////////////////////
         public Boolean Connected => _buffer.Connected;
         public Guid SessionId { get; }
-
-
-        // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
-        public void RefreshConnection(TcpClient client)
-        {
-            _buffer.SetClient(client);
-        }
 
 
         // THREADS ////////////////////////////////////////////////////////////////////////////////
@@ -79,6 +72,13 @@ namespace Server
                     throw;
                 }
             }
+        }
+
+
+        // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
+        public void RefreshConnection(TcpClient client)
+        {
+            _buffer.SetClient(client);
         }
 
 

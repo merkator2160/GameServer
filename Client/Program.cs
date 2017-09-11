@@ -44,7 +44,7 @@ namespace Client
         {
             var host = args.Length > 0 ? args[0] : "127.0.0.1";
             var port = args.Length > 1 ? Int32.Parse(args[1]) : 8888;
-            var nickName = args.Length > 2 ? args[1] : "Default";
+            var nickName = args.Length > 2 ? args[2] : "Default";
             var roomId = args.Length > 3 ? Guid.Parse(args[3]) : new Guid("0b23d1e1-58a0-4122-8e9b-fa65961b0df6");
 
             return new RootConfig()

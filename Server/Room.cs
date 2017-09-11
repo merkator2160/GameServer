@@ -91,7 +91,7 @@ namespace Server
         {
             lock (_members)
             {
-                _members.Add(new RoomMember(sessionId, client, nickName, _roomMessenger, true));
+                _members.Add(new RoomMember(sessionId, client, nickName, _roomMessenger, false));
             }
         }
         public void ReconnectParticipiant(TcpClient client, Guid sessionId)
