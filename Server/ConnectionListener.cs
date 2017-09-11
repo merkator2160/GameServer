@@ -10,19 +10,19 @@ namespace Server
 {
     internal class ConnectionListener : IDisposable
     {
-        private readonly ServerConfig _config;
+        private readonly RootConfig _config;
         private readonly IMessenger _messenger;
         private Boolean _disposed;
         private readonly TcpListener _tcpListener;
         private readonly ManualResetEventSlim _workingMres;
 
 
-        public ConnectionListener(ServerConfig config, IMessenger messenger)
+        public ConnectionListener(RootConfig config, IMessenger messenger)
         {
             _config = config;
             _messenger = messenger;
             _workingMres = new ManualResetEventSlim(false);
-            _tcpListener = TcpListener.Create(_config.ListeningPort);
+            _tcpListener = TcpListener.Create(_config.Port);
 
             ThreadPool.QueueUserWorkItem(AcceptNewClientThread);
         }

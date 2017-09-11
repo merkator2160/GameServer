@@ -1,5 +1,4 @@
-﻿using Common;
-using GalaSoft.MvvmLight.Messaging;
+﻿using GalaSoft.MvvmLight.Messaging;
 using Microsoft.Practices.Unity;
 using Server.Models;
 using System;
@@ -15,17 +14,16 @@ namespace Server
         static void Main(String[] args)
         {
             CheckForAnotherInstances();
+            using (var container = ConfigureContainer(args))
+            {
+                var messenger = container.Resolve<IMessenger>();
+                var consoleWriter = container.Resolve<ServerConsoleWriter>();
+                var roomManager = container.Resolve<RoomManager>();
+                var connectionListener = container.Resolve<ConnectionListener>();
+                connectionListener.Start();
 
-            var container = ConfigureContainer(args);
-            var messenger = container.Resolve<IMessenger>();
-            var consoleWriter = container.Resolve<ServerConsoleWriter>();
-            var roomManager = container.Resolve<RoomManager>();
-            var connectionListener = container.Resolve<ConnectionListener>();
-            connectionListener.Start();
-
-            Console.ReadKey();
-
-            container.Dispose();
+                Console.ReadKey();
+            }
         }
 
 
@@ -46,9 +44,9 @@ namespace Server
         private static IUnityContainer ConfigureContainer(String[] args)
         {
             var container = new UnityContainer();
-            container.RegisterInstance(new ServerConfig()
+            container.RegisterInstance(new RootConfig()
             {
-                ListeningPort = ExtractCommandArgs(args),
+                Port = ExtractCommandArgs(args),
                 RoomManagerConfig = new RoomManagerConfig()
                 {
                     CleanUpThreadIdle = TimeSpan.FromSeconds(1),

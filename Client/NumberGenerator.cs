@@ -7,18 +7,16 @@ namespace Client
 {
     internal class NumberGenerator : IDisposable
     {
-        private readonly Int64 _offset;
-        private readonly Int64 _delay;
+        private readonly NumberGeneratorConfig _config;
         private readonly IMessenger _messenger;
         private readonly Timer _timer;
         private Boolean _disposed;
         private Int64 _counter;
 
 
-        public NumberGenerator(Int64 offset, Int64 delay, IMessenger messenger)
+        public NumberGenerator(RootConfig config, IMessenger messenger)
         {
-            _offset = offset;
-            _delay = delay;
+            _config = config.NumberGeneratorConfig;
             _messenger = messenger;
             _counter = 0;
             _timer = new Timer(TimerCallback);
@@ -35,7 +33,7 @@ namespace Client
         // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
         public void Start()
         {
-            _timer.Change(_offset, _delay);
+            _timer.Change(_config.Offset, _config.Delay);
         }
         public void Stop()
         {

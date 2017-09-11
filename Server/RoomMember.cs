@@ -6,6 +6,9 @@ using GalaSoft.MvvmLight.Messaging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Net.Sockets;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading;
 
@@ -13,18 +16,22 @@ namespace Server
 {
     internal class RoomMember : IDisposable
     {
+        private readonly String _nickName;
         private readonly IMessenger _roomMessenger;
         private readonly Boolean _sendEcho;
         private Boolean _disposed;
         private readonly Dictionary<MessageType, Action<Byte[]>> _messageDictionary;
+        private readonly ConnectionBuffer _buffer;
 
 
-        public RoomMember(Guid id, BufferedTcpClient<NetworkMessage> client, IMessenger roomMessenger, Boolean sendEcho)
+        public RoomMember(Guid sessionId, TcpClient client, String nickName, IMessenger roomMessenger, Boolean sendEcho)
         {
-            Id = id;
+            SessionId = sessionId;
+            _nickName = nickName;
             _roomMessenger = roomMessenger;
             _sendEcho = sendEcho;
-            Client = client;
+            _buffer = new ConnectionBuffer(true);
+            _buffer.SetClient(client);
             _messageDictionary = new Dictionary<MessageType, Action<Byte[]>>()
             {
                 { MessageType.Text, HandleTextMessage }
@@ -36,8 +43,15 @@ namespace Server
 
 
         // PROPERTIES /////////////////////////////////////////////////////////////////////////////
-        public BufferedTcpClient<NetworkMessage> Client { get; }
-        public Guid Id { get; }
+        public Boolean Connected => _buffer.Connected;
+        public Guid SessionId { get; }
+
+
+        // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
+        public void RefreshConnection(TcpClient client)
+        {
+            _buffer.SetClient(client);
+        }
 
 
         // THREADS ////////////////////////////////////////////////////////////////////////////////
@@ -47,13 +61,13 @@ namespace Server
             {
                 try
                 {
-                    if (Client.ReceivedMessageQueue.IsEmpty)
+                    if (_buffer.ReceivedMessageQueue.IsEmpty)
                     {
                         Thread.Sleep(10);
                         continue;
                     }
 
-                    if (Client.ReceivedMessageQueue.TryDequeue(out NetworkMessage message))
+                    if (_buffer.ReceivedMessageQueue.TryDequeue(out NetworkMessage message))
                     {
                         _messageDictionary[message.Type].Invoke(message.Data);
                     }
@@ -71,13 +85,25 @@ namespace Server
         private void HandleTextMessage(Byte[] data)
         {
             var text = Encoding.UTF8.GetString(data);
-            _roomMessenger.Send(new TextReceiveMessage(text, Id));
+            _roomMessenger.Send(new TextReceiveMessage(text, SessionId));
         }
         private void RoomMessageTextReceived(TextReceiveMessage message)
         {
-            if (_sendEcho || message.Sender != Id)
+            if (_sendEcho || message.Sender != SessionId)
             {
-                Client.SendMessageQueue.Enqueue(new NetworkMessage(MessageType.Text, Encoding.UTF8.GetBytes(message.Text)));
+                using (var memoryStream = new MemoryStream())
+                {
+                    new BinaryFormatter().Serialize(memoryStream, new TextMessage()
+                    {
+                        Text = message.Text,
+                        From = _nickName
+                    });
+                    _buffer.SendMessageQueue.Enqueue(new NetworkMessage()
+                    {
+                        Type = MessageType.Text,
+                        Data = memoryStream.ToArray()
+                    });
+                }
             }
         }
 
@@ -89,7 +115,7 @@ namespace Server
             {
                 _disposed = true;
 
-                Client?.Dispose();
+                _buffer?.Dispose();
             }
         }
     }

@@ -24,7 +24,7 @@ namespace Server
         private readonly ConcurrentQueue<TcpClient> _newClientQueue;
 
 
-        public RoomManager(ServerConfig config, IMessenger messenger)
+        public RoomManager(RootConfig config, IMessenger messenger)
         {
             _applicationMessenger = messenger;
 
@@ -106,7 +106,7 @@ namespace Server
                         continue;
                     }
 
-                    HandleNewClient();
+                    HandleNewClientAsync();
                 }
                 catch (Exception ex)
                 {
@@ -115,24 +115,39 @@ namespace Server
                 }
             }
         }
-        private void HandleNewClient()
+        private async void HandleNewClientAsync()
         {
-            if (_newClientQueue.TryDequeue(out TcpClient client))
-            {
-                var stream = client.GetStream();
-                var request = stream.ReadObject<ConnectionRequest>();
-                lock (_chatRooms)
-                {
-                    var requestedRoom = _chatRooms.FirstOrDefault(r => r.Id == request.RoomId);
-                    if (requestedRoom == null)
-                    {
-                        requestedRoom = new Room(request.RoomId);
-                        _chatRooms.Add(requestedRoom);
-                    }
+            if (!_newClientQueue.TryDequeue(out TcpClient client))
+                return;
 
-                    requestedRoom.AddParticipiant(client, request.ClientId);
+            var stream = client.GetStream();
+            var request = await stream.ReadObjectAsync<ConnectionRequest>();
+            var sessionId = request.SessionId;
+
+            lock (_chatRooms)
+            {
+                var requestedRoom = _chatRooms.FirstOrDefault(r => r.Id == request.RoomId);
+                if (requestedRoom == null)
+                {
+                    requestedRoom = new Room(request.RoomId);
+                    _chatRooms.Add(requestedRoom);
+                }
+
+                if (sessionId == Guid.Empty)
+                {
+                    sessionId = Guid.NewGuid();
+                    requestedRoom.AddParticipiant(client, sessionId, request.NickName);
+                }
+                else
+                {
+                    requestedRoom.ReconnectParticipiant(client, sessionId);
                 }
             }
+
+            await stream.WriteObjectAsync(new ConnectionResponse()
+            {
+                SessionId = sessionId
+            });
         }
 
 

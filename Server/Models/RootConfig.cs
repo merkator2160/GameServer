@@ -2,9 +2,9 @@
 
 namespace Server.Models
 {
-    public class ServerConfig
+    public class RootConfig
     {
-        public Int32 ListeningPort { get; set; }
+        public Int32 Port { get; set; }
         public RoomManagerConfig RoomManagerConfig { get; set; }
     }
 }

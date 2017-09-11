@@ -1,6 +1,6 @@
 ﻿using System.Net.Sockets;
 
-namespace Common.Models.MvvmLight
+namespace Server.Models
 {
     public class NewClientAvaliableMessage
     {

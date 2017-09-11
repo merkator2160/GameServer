@@ -7,13 +7,13 @@ namespace Common
     {
         private readonly String _value;
 
-        public SerializableGuid(String value)
+        private SerializableGuid(String value)
         {
             _value = value;
         }
-        public SerializableGuid(Guid guid)
+        private SerializableGuid(Guid id)
         {
-            _value = guid.ToString();
+            _value = id.ToString();
         }
 
 
@@ -45,6 +45,7 @@ namespace Common
         }
 
 
+        // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
         public override Boolean Equals(Object obj)
         {
             return base.Equals(obj);

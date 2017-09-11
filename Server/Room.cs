@@ -1,6 +1,4 @@
-﻿using Common;
-using Common.Models.Metwork;
-using Common.Models.MvvmLight;
+﻿using Common.Models.MvvmLight;
 using GalaSoft.MvvmLight.Messaging;
 using System;
 using System.Collections.Generic;
@@ -52,7 +50,7 @@ namespace Server
         }
         private void RemoveDisconnectedMembers()
         {
-            var disconnectedMembers = _members.Where(p => !p.Client.Connected).ToArray();
+            var disconnectedMembers = _members.Where(p => !p.Connected).ToArray();
             foreach (var x in disconnectedMembers)
             {
                 _members.Remove(x);
@@ -89,12 +87,19 @@ namespace Server
 
 
         // FUNCTIONS //////////////////////////////////////////////////////////////////////////////
-        public void AddParticipiant(TcpClient client, Guid clientId)
+        public void AddParticipiant(TcpClient client, Guid sessionId, String nickName)
         {
-            var bufferedClient = new BufferedTcpClient<NetworkMessage>(client, true);
             lock (_members)
             {
-                _members.Add(new RoomMember(clientId, bufferedClient, _roomMessenger, false));
+                _members.Add(new RoomMember(sessionId, client, nickName, _roomMessenger, true));
+            }
+        }
+        public void ReconnectParticipiant(TcpClient client, Guid sessionId)
+        {
+            lock (_members)
+            {
+                var member = _members.FirstOrDefault(p => p.SessionId == sessionId);
+                member?.RefreshConnection(client);
             }
         }
 

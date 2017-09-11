@@ -10,33 +10,38 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Client
 {
     internal class GameClient : IDisposable
     {
+        private Guid _sessionId = Guid.Empty;
         private Boolean _disposed;
-        private readonly IMessenger _messenger;
 
-        private BufferedTcpClient<NetworkMessage> _bufferedClient;
+        private readonly IMessenger _messenger;
+        private readonly ConnectionBuffer _bufferedClient;
         private readonly ManualResetEventSlim _workingMres;
         private readonly ManualResetEventSlim _connectedMres;
-        private readonly Config _config;
+        private readonly RootConfig _config;
         private readonly Dictionary<MessageType, Action<Byte[]>> _messageDictionary;
 
 
-        public GameClient(Config config, IMessenger messenger)
+        public GameClient(RootConfig config, IMessenger messenger)
         {
             _config = config;
             _messenger = messenger;
-            _messenger.Register<NumberGeneratedMessage>(this, SendMessage);
+            _bufferedClient = new ConnectionBuffer(false);
+            _messenger.Register<NumberGeneratedMessage>(this, OnNumberGenerated);
             _workingMres = new ManualResetEventSlim(false);
             _connectedMres = new ManualResetEventSlim(false);
             _messageDictionary = new Dictionary<MessageType, Action<Byte[]>>()
             {
-                { MessageType.Text, HandleTextMessage }
+                { MessageType.Text, HandleTextMessage },
+                { MessageType.KeepAlive, (data) => { } }
             };
 
             ThreadPool.QueueUserWorkItem(ConnectionControlThread);
@@ -45,7 +50,7 @@ namespace Client
 
 
         // THREADS ////////////////////////////////////////////////////////////////////////////////
-        private void ConnectionControlThread(Object state)
+        private async void ConnectionControlThread(Object state)
         {
             while (!_disposed)
             {
@@ -53,10 +58,10 @@ namespace Client
 
                 if (_bufferedClient == null || !_bufferedClient.Connected)
                 {
-                    if (!TryConnect())
+                    if (!await TryConnectAsync())
                     {
                         _messenger.Send(new ConsoleMessage("Server unavalible. Retrying to connect."));
-                        Thread.Sleep(_config.ReconnectDelay);
+                        Thread.Sleep(_config.NetworkConfig.ReconnectDelay);
                         continue;
                     }
 
@@ -67,14 +72,26 @@ namespace Client
                 Thread.Sleep(10);
             }
         }
-        private Boolean TryConnect()
+        private async Task<Boolean> TryConnectAsync()
         {
             try
             {
-                var tcpClient = new TcpClient(_config.Host, _config.Port);
-                SendConnectionRequest(tcpClient);
-                _bufferedClient = new BufferedTcpClient<NetworkMessage>(tcpClient, false);
+                var tcpClient = new TcpClient();
+                await tcpClient.ConnectAsync(_config.NetworkConfig.Host, _config.NetworkConfig.Port);
 
+                var stream = tcpClient.GetStream();
+                await stream.WriteObjectAsync(new ConnectionRequest()
+                {
+                    RoomId = _config.RoomId,
+                    SessionId = _sessionId,
+                    NickName = _config.NickName
+                });
+                var response = await stream.ReadObjectAsync<ConnectionResponse>();
+                if (response.SessionId == Guid.Empty)
+                    return false;
+
+                _sessionId = response.SessionId;
+                _bufferedClient.SetClient(tcpClient);
                 return true;
             }
             catch (Exception ex)
@@ -85,15 +102,6 @@ namespace Client
                 Debug.WriteLine(ex.Message);
                 throw;
             }
-        }
-        private void SendConnectionRequest(TcpClient client)
-        {
-            var stream = client.GetStream();
-            stream.WriteObject(new ConnectionRequest()
-            {
-                RoomId = _config.RoomId,
-                ClientId = _config.ClientId
-            });
         }
 
 
@@ -129,19 +137,22 @@ namespace Client
         }
         private void HandleTextMessage(Byte[] data)
         {
-            var text = Encoding.UTF8.GetString(data);
-            _messenger.Send(new ConsoleMessage($"Client id: {_config.ClientId}, Room id: {_config.RoomId}: {text}"));
+            using (var memoryStream = new MemoryStream(data))
+            {
+                var textMessage = new BinaryFormatter().Deserialize(memoryStream) as TextMessage;
+                _messenger.Send(new ConsoleMessage($"{textMessage.From}: {textMessage.Text}"));
+            }
         }
 
 
         // HANDLERS ///////////////////////////////////////////////////////////////////////////////
-        private void SendMessage(NumberGeneratedMessage message)
+        private void OnNumberGenerated(NumberGeneratedMessage message)
         {
-            if (_bufferedClient == null || !_bufferedClient.Connected)
-                return;
-
-            var data = Encoding.UTF8.GetBytes(message.Number.ToString());
-            _bufferedClient.SendMessageQueue.Enqueue(new NetworkMessage(MessageType.Text, data));
+            _bufferedClient.SendMessageQueue.Enqueue(new NetworkMessage()
+            {
+                Type = MessageType.Text,
+                Data = Encoding.UTF8.GetBytes(message.Number.ToString())
+            });
         }
 
 

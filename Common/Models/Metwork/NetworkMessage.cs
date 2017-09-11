@@ -6,15 +6,7 @@ namespace Common.Models.Metwork
     [Serializable]
     public class NetworkMessage
     {
-        public NetworkMessage(MessageType type, Byte[] data)
-        {
-            Type = type;
-            Data = data;
-        }
-
-
-        // PROPERTIES /////////////////////////////////////////////////////////////////////////////
-        public MessageType Type { get; }
-        public Byte[] Data { get; }
+        public MessageType Type { get; set; }
+        public Byte[] Data { get; set; }
     }
 }

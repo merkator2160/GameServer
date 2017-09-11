@@ -2,7 +2,7 @@
 {
     public enum MessageType
     {
-        ConnetionRequest,
-        Text
+        Text,
+        KeepAlive
     }
 }
