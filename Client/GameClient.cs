@@ -1,16 +1,15 @@
 ﻿using Client.Models;
-using Common;
 using Common.Extensions;
+using Common.MessageProcessing;
 using Common.Models.Enums;
 using Common.Models.Metwork;
 using Common.Models.MvvmLight;
 using GalaSoft.MvvmLight.Messaging;
+using PipelineNet.Pipelines;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,26 +22,22 @@ namespace Client
         private Boolean _disposed;
 
         private readonly IMessenger _messenger;
+        private readonly IPipeline<NetworkMessage> _networkMessagePipe;
         private readonly ConnectionBuffer _bufferedClient;
         private readonly ManualResetEventSlim _workingMres;
         private readonly ManualResetEventSlim _connectedMres;
         private readonly RootConfig _config;
-        private readonly Dictionary<MessageType, Action<Byte[]>> _messageDictionary;
 
 
-        public GameClient(RootConfig config, IMessenger messenger)
+        public GameClient(RootConfig config, IMessenger messenger, IPipeline<NetworkMessage> networkMessagePipe)
         {
             _config = config;
             _messenger = messenger;
+            _networkMessagePipe = networkMessagePipe;
             _bufferedClient = new ConnectionBuffer(false);
             _messenger.Register<NumberGeneratedMessage>(this, OnNumberGenerated);
             _workingMres = new ManualResetEventSlim(false);
             _connectedMres = new ManualResetEventSlim(false);
-            _messageDictionary = new Dictionary<MessageType, Action<Byte[]>>()
-            {
-                { MessageType.Text, HandleTextMessage },
-                { MessageType.KeepAlive, (data) => { } }
-            };
 
             ThreadPool.QueueUserWorkItem(ConnectionControlThread);
             ThreadPool.QueueUserWorkItem(ReadingMessagesThread);
@@ -120,7 +115,7 @@ namespace Client
 
                     if (_bufferedClient.ReceivedMessageQueue.TryDequeue(out NetworkMessage message))
                     {
-                        _messageDictionary[message.Type].Invoke(message.Data);
+                        _networkMessagePipe.Execute(message);
                     }
                 }
                 catch (Exception ex)
@@ -133,14 +128,6 @@ namespace Client
                     Debug.WriteLine(ex.Message);
                     throw;
                 }
-            }
-        }
-        private void HandleTextMessage(Byte[] data)
-        {
-            using (var memoryStream = new MemoryStream(data))
-            {
-                var textMessage = new BinaryFormatter().Deserialize(memoryStream) as TextMessage;
-                _messenger.Send(new ConsoleMessage($"{textMessage.From}: {textMessage.Text}"));
             }
         }
 

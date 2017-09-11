@@ -2,7 +2,7 @@
 using PipelineNet.MiddlewareResolver;
 using System;
 
-namespace Common
+namespace Common.MessageProcessing
 {
     public class UnityMiddlewareResolver : IMiddlewareResolver
     {

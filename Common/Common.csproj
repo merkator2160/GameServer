@@ -72,10 +72,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ConnectionBuffer.cs" />
+    <Compile Include="MessageProcessing\ConnectionBuffer.cs" />
     <Compile Include="Extensions\SocketExtensions.cs" />
-    <Compile Include="IMessageProcessor.cs" />
-    <Compile Include="MessageProcessor.cs" />
+    <Compile Include="MessageProcessing\INetworkMessagePipe.cs" />
     <Compile Include="Models\Enums\MessageType.cs" />
     <Compile Include="Extensions\NetworkStreamExtensions.cs" />
     <Compile Include="Models\Metwork\ConnectionRequest.cs" />
@@ -86,7 +85,7 @@
     <Compile Include="Models\MvvmLight\TextReceivedMessage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SerializableGuid.cs" />
-    <Compile Include="UnityMiddlewareResolver.cs" />
+    <Compile Include="MessageProcessing\UnityMiddlewareResolver.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

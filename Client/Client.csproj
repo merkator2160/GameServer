@@ -78,6 +78,8 @@
     <Compile Include="Models\RootConfig.cs" />
     <Compile Include="Models\NetworkConfig.cs" />
     <Compile Include="Models\NumberGeneratedMessage.cs" />
+    <Compile Include="PipeHandlers\KeepAliveMessageHandler.cs" />
+    <Compile Include="PipeHandlers\TextMessageHandler.cs" />
     <Compile Include="NumberGenerator.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

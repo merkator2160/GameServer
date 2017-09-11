@@ -1,4 +1,4 @@
-﻿using Common;
+﻿using Common.MessageProcessing;
 using Common.Models.Enums;
 using Common.Models.Metwork;
 using Common.Models.MvvmLight;
@@ -34,7 +34,8 @@ namespace Server
             _buffer.SetClient(client);
             _messageDictionary = new Dictionary<MessageType, Action<Byte[]>>()
             {
-                { MessageType.Text, HandleTextMessage }
+                { MessageType.Text, HandleTextMessage },
+                { MessageType.KeepAlive, (data) => { }}
             };
 
             roomMessenger.Register<TextReceiveMessage>(this, RoomMessageTextReceived);

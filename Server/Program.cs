@@ -1,11 +1,15 @@
-﻿using GalaSoft.MvvmLight.Messaging;
+﻿using Common.MessageProcessing;
+using Common.MessageProcessing.PipeHandlers;
+using Common.Models.Metwork;
+using GalaSoft.MvvmLight.Messaging;
 using Microsoft.Practices.Unity;
+using PipelineNet.MiddlewareResolver;
+using PipelineNet.Pipelines;
 using Server.Models;
 using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
-using Messenger = GalaSoft.MvvmLight.Messaging.Messenger;
 
 namespace Server
 {
@@ -56,6 +60,10 @@ namespace Server
             container.RegisterType<IMessenger, Messenger>(new ContainerControlledLifetimeManager());
             container.RegisterType<ServerConsoleWriter>(new ContainerControlledLifetimeManager());
             container.RegisterType<RoomManager>(new ContainerControlledLifetimeManager());
+            container.RegisterType<IMiddlewareResolver, UnityMiddlewareResolver>();
+            container.RegisterInstance(new Pipeline<NetworkMessage>(container.Resolve<IMiddlewareResolver>())
+                .Add<TextMessageHandler>()
+                .Add<KeepAliveMessageHandler>());
 
             return container;
         }

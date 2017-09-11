@@ -1,8 +1,11 @@
 ﻿using Client.Models;
-using Common;
+using Client.PipeHandlers;
+using Common.MessageProcessing;
+using Common.Models.Metwork;
 using GalaSoft.MvvmLight.Messaging;
 using Microsoft.Practices.Unity;
 using PipelineNet.MiddlewareResolver;
+using PipelineNet.Pipelines;
 using System;
 
 namespace Client
@@ -28,10 +31,12 @@ namespace Client
             container.RegisterType<IMessenger, Messenger>(new ContainerControlledLifetimeManager());
             container.RegisterInstance(CreateConfigFromCommandArgs(args));
             container.RegisterType<NumberGenerator>();
-            container.RegisterType<IMiddlewareResolver, UnityMiddlewareResolver>();
-            container.RegisterType<IMessageProcessor, MessageProcessor>();
             container.RegisterType<GameClient>();
             container.RegisterType<ConsoleWriter>(new ContainerControlledLifetimeManager());
+            container.RegisterType<IMiddlewareResolver, UnityMiddlewareResolver>();
+            container.RegisterInstance(new Pipeline<NetworkMessage>(container.Resolve<IMiddlewareResolver>())
+                .Add<TextMessageHandler>()
+                .Add<KeepAliveMessageHandler>());
 
             return container;
         }
@@ -54,8 +59,8 @@ namespace Client
                 },
                 NumberGeneratorConfig = new NumberGeneratorConfig()
                 {
-                    Delay = 1000,
-                    Offset = 100
+                    Delay = 100,
+                    Offset = 1000
                 }
             };
         }

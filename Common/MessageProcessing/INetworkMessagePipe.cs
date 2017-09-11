@@ -1,8 +1,8 @@
 ﻿using Common.Models.Metwork;
 
-namespace Common
+namespace Common.MessageProcessing
 {
-    public interface IMessageProcessor
+    public interface INetworkMessagePipe
     {
         void Handle(NetworkMessage message);
     }

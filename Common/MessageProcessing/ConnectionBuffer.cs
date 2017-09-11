@@ -8,7 +8,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Threading;
 
-namespace Common
+namespace Common.MessageProcessing
 {
     public class ConnectionBuffer : IDisposable
     {
