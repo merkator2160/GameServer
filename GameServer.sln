@@ -8,7 +8,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Items", "Items", "{59742426
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
 		clean-with-scc.bat = clean-with-scc.bat
-		TT.txt = TT.txt
+		readme.md = readme.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A175DD6A-6050-4353-B5E7-DEA73986673C}"
