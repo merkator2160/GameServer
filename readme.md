@@ -1,14 +1,12 @@
-Необходимо разработать echo-server.
-Echo-server состоит из комнат.
-Каждая комната имеет строковый идентификатор.
-При соединении с сервером клиент передает идентификатор комнаты к которой он подключается и идентификатор подключаемого клиента (осуществляет вход в комнату).
-Если комнаты не существую на момент установки соединения, то должна быть создана новая комната с переданным идентификатором.
-После успешного входа в комнату клиент, с периодичностью раз в 100ms, начинает рассылать Echo-сообщения содержащие текст.
-Echo-сообщение из комнаты рассылается всем клиентам находящимся в ней.
-Если в комнату не поступало Echo-сообщений в течении 1 минуты, комната удаляется с сервера.
+# Technical task
 
-Задание должно быть выполнено с использованием языка C#.
-Проект должен открываться в Visual Studio 2015.
-Проект может быть размещен на GitHub/GitLab/Bitbacket и т.д. или отправлен Zip-архивом (архив с артефактами сборки приниматься не будет).
+You must develop an echo-server.
+Echo-server consists of rooms.
+Each room has a identifier.
+When you connect to the server, the client sends the room ID to which it connects and the client ID of the connecting client (logging in to the room).
+If the room does not exist at the connection time, a new room with the provided ID must be created.
+After successful entry into the room, the client with a frequency of times 100ms, begins to send echo messages containing a text.
+An echo message from a room is sent to all clients in the room.
+If the room has not received echo messages within 1 minute, the room is removed from the server.
 
-Сетевой протокол взаимодействия сервера и клиента (HTTP/TCP/UDP) - на ваше усмотрение.
+The network protocol of interaction between server and client at your discretion (HTTP/TCP/UDP).
